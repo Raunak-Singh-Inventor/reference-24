@@ -9,7 +9,8 @@ Firmware Bundle-and-Protect Tool
 """
 import argparse
 from pwn import *
-
+from Crypto.Cipher import AES
+from Crypto.Random import get_random_bytes
 
 def protect_firmware(infile, outfile, version, message):
     # Load firmware binary from infile
@@ -19,11 +20,23 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
+    key = get_random_bytes(16)
+    cipher = AES.new(key, AES.MODE_GCM)
+    secrets = open("secret_build_output.txt", "wb")
+    secrets.write(key)
+    secrets.write(b"\n")
+    secrets.write(cipher.nonce)
+    secrets.write(b"\n")
+    ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message)
+    secrets.write(tag)
+    secrets.write(b"\n")
+    secrets.close()
+
     # Pack version and size into two little-endian shorts
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')  
 
     # Append firmware and message to metadata
-    firmware_blob = metadata + firmware_and_message
+    firmware_blob = metadata + ciphertext
 
     # Write firmware blob to outfile
     with open(outfile, "wb+") as outfile:

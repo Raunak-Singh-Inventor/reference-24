@@ -165,6 +165,8 @@ void load_firmware(void) {
 
     /* Loop here until you can get all your characters and stuff */
     while (1) {
+        // Frame Format
+        // | size | data |
 
         // Get two bytes for the length.
         rcv = uart_read(UART0, BLOCKING, &read);
@@ -180,7 +182,25 @@ void load_firmware(void) {
 
         // If we filed our page buffer, program it
         if (data_index == FLASH_PAGESIZE || frame_length == 0) {
-            // Try to write flash and check for error
+            Aes dec;
+            byte key[16];
+            byte nonce[16];
+            byte tag[16];
+            FILE* secrets;
+            secrets = fopen("../tools/secret_build_output.txt", "rb");
+            if(secrets!=NULL) {
+                fread(key, 1, 16, secrets);
+                fread((void *) NULL, 1, 1, secrets);
+                fread(nonce, 1, 16, secrets);
+                fread((void *) NULL, 1, 1, secrets);
+                fread(tag, 1, 16, secrets);
+                fread((void *) NULL, 1, 1, secrets);
+            }
+            fclose(secrets);
+            char data_dec[FLASH_PAGESIZE];
+
+            wc_AesGcmSetKey(&dec, key, 16);
+            wc_AesGcmDecrypt(&dec, data_dec, data, FLASH_PAGESIZE, nonce, 16, tag, 16, NULL, 0);
             if (program_flash((uint8_t *) page_addr, data, data_index)) {
                 uart_write(UART0, ERROR); // Reject the firmware
                 SysCtlReset();            // Reset device
