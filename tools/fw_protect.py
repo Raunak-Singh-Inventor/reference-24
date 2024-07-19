@@ -9,6 +9,9 @@ Firmware Bundle-and-Protect Tool
 """
 import argparse
 from pwn import *
+from Crypto.Signature import pkcs1_15
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
 
 
 def protect_firmware(infile, outfile, version, message):
@@ -25,9 +28,30 @@ def protect_firmware(infile, outfile, version, message):
     # Append firmware and message to metadata
     firmware_blob = metadata + firmware_and_message
 
-    # Write firmware blob to outfile
+    # Create RSA key
+    rsaKey = RSA.generate(2048)
+
+    # Create RSA signature
+    h = SHA256.new()
+    h.update(firmware_blob)
+    signer = pkcs1_15.new(rsaKey)
+    signature = signer.sign(h)
+
+    # Open secrets file to write keys
+    secrets = open("secret_build_output.txt", "wb")
+
+    # Write RSA key to secret
+    data = rsaKey.public_key().export_key()
+    secrets.write(data)
+    secrets.write(b'\n')
+
+    # Close the secrets file
+    secrets.close()
+
+    # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
         outfile.write(firmware_blob)
+        outfile.write(signature)
 
 
 if __name__ == "__main__":
