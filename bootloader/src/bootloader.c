@@ -24,6 +24,8 @@
 #include "wolfssl/wolfcrypt/sha.h"
 #include "wolfssl/wolfcrypt/rsa.h"
 
+#include "secrets.h"
+
 // Forward Declarations
 void load_firmware(void);
 void boot_firmware(void);
@@ -47,9 +49,6 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 uint16_t * fw_version_address = (uint16_t *)METADATA_BASE;
 uint16_t * fw_size_address = (uint16_t *)(METADATA_BASE + 2);
 uint8_t * fw_release_message_address;
-
-// Firmware Buffer
-unsigned char data[FLASH_PAGESIZE];
 
 // Delay to allow time to connect GDB
 // green LED as visual indicator of when this function is running
@@ -127,7 +126,7 @@ void load_firmware(void) {
     uint32_t page_addr = FW_BASE;
     uint32_t version = 0;
     uint32_t size = 0;
-
+    
     // Get version.
     rcv = uart_read(UART0, BLOCKING, &read);
     version = (uint32_t)rcv;
@@ -164,6 +163,7 @@ void load_firmware(void) {
     uart_write(UART0, OK); // Acknowledge the metadata.
 
     /* Loop here until you can get all your characters and stuff */
+    unsigned char data[FW_LEN];
     while (1) {
         // Frame Format
         // | size | data |
@@ -181,41 +181,31 @@ void load_firmware(void) {
         } // for
 
         // If we filed our page buffer, program it
-        if (data_index == FLASH_PAGESIZE || frame_length == 0) {
-            Aes dec;
-            byte key[16];
-            byte nonce[16];
-            byte tag[16];
-            FILE* secrets;
-            secrets = fopen("../tools/secret_build_output.txt", "rb");
-            if(secrets!=NULL) {
-                fread(key, 1, 16, secrets);
-                fread((void *) NULL, 1, 1, secrets);
-                fread(nonce, 1, 16, secrets);
-                fread((void *) NULL, 1, 1, secrets);
-                fread(tag, 1, 16, secrets);
-                fread((void *) NULL, 1, 1, secrets);
+        if (frame_length == 0) {
+            uart_write(UART0, OK);
+            Aes dec;// Firmware Buffer
+            unsigned char data_dec[sizeof(data)];
+            
+            wc_AesInit(&dec, NULL, INVALID_DEVID);
+            wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY));
+            wc_AesGcmDecrypt(&dec, data_dec, data, sizeof(data), AES_NONCE, sizeof(AES_NONCE), AES_TAG, sizeof(AES_TAG), AES_AAD, sizeof(AES_AAD));
+            wc_AesFree(&dec);
+            
+            for(int i = 0; i < FW_LEN; i+=FLASH_PAGESIZE) {
+                unsigned char data_dec_page[FLASH_PAGESIZE];
+                for(int j = i; j < FW_LEN && j<j+FLASH_PAGESIZE; j++) {
+                    data_dec_page[j-i] = data_dec[j];
+                }
+                if (program_flash((uint8_t *) page_addr, data_dec_page, data_index)) {
+                    uart_write(UART0, ERROR); // Reject the firmware
+                    SysCtlReset();            // Reset device
+                    return;
+                }
+                // // Update to next page
+                // page_addr += FLASH_PAGESIZE;
+                // data_index = 0;
             }
-            fclose(secrets);
-            char data_dec[FLASH_PAGESIZE];
-
-            wc_AesGcmSetKey(&dec, key, 16);
-            wc_AesGcmDecrypt(&dec, data_dec, data, FLASH_PAGESIZE, nonce, 16, tag, 16, NULL, 0);
-            if (program_flash((uint8_t *) page_addr, data, data_index)) {
-                uart_write(UART0, ERROR); // Reject the firmware
-                SysCtlReset();            // Reset device
-                return;
-            }
-
-            // Update to next page
-            page_addr += FLASH_PAGESIZE;
-            data_index = 0;
-
-            // If at end of firmware, go to main
-            if (frame_length == 0) {
-                uart_write(UART0, OK);
-                break;
-            }
+            break;
         } // if
 
         uart_write(UART0, OK); // Acknowledge the frame.
