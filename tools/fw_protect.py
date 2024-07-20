@@ -44,7 +44,6 @@ def protect_firmware(infile, outfile, version, message):
     add_var_secrets("AES_NONCE", cipher.nonce, len(cipher.nonce), secrets)
     add_var_secrets("AES_TAG", tag, len(tag), secrets)
     add_var_secrets("AES_AAD", metadata, len(metadata), secrets)
-    # quot = int(1 + ((len(ciphertext)-1) / 258))
     secrets.write("const uint32_t FW_LEN = " + str(len(ciphertext)) + ";\n")
     secrets.write("#endif")
     secrets.close()

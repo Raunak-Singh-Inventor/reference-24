@@ -103,8 +103,6 @@ def update(ser, infile, debug):
     ser.write(p16(0x0000, endian='big'))
     resp = ser.read(1)  # Wait for an OK from the bootloader
     if resp != RESP_OK:
-        while(1):
-            print(ser.read(1).decode("utf-8"), end="")
         raise RuntimeError("ERROR: Bootloader responded to zero length frame with {}".format(repr(resp)))
     print(f"Wrote zero length frame (2 bytes)")
 

@@ -189,8 +189,6 @@ void load_firmware(void) {
             wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY));
             wc_AesGcmDecrypt(&dec, data_dec, data, sizeof(data), AES_NONCE, sizeof(AES_NONCE), AES_TAG, sizeof(AES_TAG), AES_AAD, sizeof(AES_AAD));
             wc_AesFree(&dec);
-
-            // uart_write_hex_bytes(UART0, data_dec, sizeof(data_dec));
             
             for(int i = 0; i < FW_LEN; i+=FLASH_PAGESIZE) {
                 unsigned char data_dec_page[FLASH_PAGESIZE];
