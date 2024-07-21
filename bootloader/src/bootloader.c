@@ -192,7 +192,7 @@ void load_firmware(void) {
             
             for(int i = 0; i < FW_LEN; i+=FLASH_PAGESIZE) {
                 unsigned char data_dec_page[FLASH_PAGESIZE];
-                for(int j = i; j < FW_LEN && j<j+FLASH_PAGESIZE; j++) {
+                for(int j = i; j < FW_LEN && j<i+FLASH_PAGESIZE; j++) {
                     data_dec_page[j-i] = data_dec[j];
                 }
                 if (program_flash((uint8_t *) page_addr, data_dec_page, FLASH_PAGESIZE)) {
