@@ -114,7 +114,7 @@ int main(void) {
 }
 
 
- /*
+ /* 
  * Load the firmware into flash.
  */
 void load_firmware(void) {
@@ -182,17 +182,18 @@ void load_firmware(void) {
 
         // If we filed our page buffer, program it
         if (frame_length == 0) {
-            Aes dec;// Firmware Buffer
-            unsigned char data_dec[sizeof(data)];
+            Aes dec; // AES decryption object
+            unsigned char data_dec[sizeof(data)]; // buffer to store decrypted firmware
             
-            wc_AesInit(&dec, NULL, INVALID_DEVID);
-            wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY));
-            wc_AesGcmDecrypt(&dec, data_dec, data, sizeof(data), AES_NONCE, sizeof(AES_NONCE), AES_TAG, sizeof(AES_TAG), AES_AAD, sizeof(AES_AAD));
-            wc_AesFree(&dec);
+            wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
+            wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
+            wc_AesGcmDecrypt(&dec, data_dec, data, sizeof(data), AES_NONCE, sizeof(AES_NONCE), AES_TAG, sizeof(AES_TAG), AES_AAD, sizeof(AES_AAD)); // decrypt the encrypted firmware
+            wc_AesFree(&dec); // free the AES object ("remove" it from memory)
             
-            for(int i = 0; i < FW_LEN; i+=FLASH_PAGESIZE) {
+            // write the decrypted data in pages to flash memory
+            for(int i = 0; i < size; i+=FLASH_PAGESIZE) {
                 unsigned char data_dec_page[FLASH_PAGESIZE];
-                for(int j = i; j < FW_LEN && j<i+FLASH_PAGESIZE; j++) {
+                for(int j = i; j < sizeof(data_dec) && j<i+FLASH_PAGESIZE; j++) {
                     data_dec_page[j-i] = data_dec[j];
                 }
                 if (program_flash((uint8_t *) page_addr, data_dec_page, FLASH_PAGESIZE)) {
