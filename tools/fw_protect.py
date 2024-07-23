@@ -15,6 +15,11 @@ from Crypto.PublicKey import RSA
 
 
 def protect_firmware(infile, outfile, version, message):
+
+    # Load secrets
+    with open('bootloader/secret_build_output.txt', 'rb') as secrets_file:
+        privKey = RSA.importKey(secrets_file.readline().strip(b"\n"))
+    
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
         firmware = fp.read()
@@ -28,25 +33,11 @@ def protect_firmware(infile, outfile, version, message):
     # Append firmware and message to metadata
     firmware_blob = metadata + firmware_and_message
 
-    # Create RSA key
-    rsaKey = RSA.generate(2048)
-
     # Create RSA signature
     h = SHA256.new()
     h.update(firmware_blob)
-    signer = pkcs1_15.new(rsaKey)
+    signer = pkcs1_15.new(privKey)
     signature = signer.sign(h)
-
-    # Open secrets file to write keys
-    secrets = open("secret_build_output.txt", "wb")
-
-    # Write RSA key to secret
-    data = rsaKey.public_key().export_key()
-    secrets.write(data)
-    secrets.write(b'\n')
-
-    # Close the secrets file
-    secrets.close()
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
