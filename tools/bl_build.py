@@ -25,6 +25,9 @@ def make_bootloader() -> bool:
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")
 
+    secrets = open("../bootloader/secret_build_output.txt", "wb")
+
+
     # Return True if make returned 0, otherwise return False.
     return status == 0
 
