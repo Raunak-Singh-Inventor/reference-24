@@ -2,6 +2,7 @@
 // Approved for public release. Distribution unlimited 23-02181-25.
 
 #include "bootloader.h"
+#include "secrets.h" // Secrets file
 
 // Hardware Imports
 #include "inc/hw_memmap.h"    // Peripheral Base Addresses
@@ -180,6 +181,29 @@ void load_firmware(void) {
 
         // If we filed our page buffer, program it
         if (data_index == FLASH_PAGESIZE || frame_length == 0) {
+
+            // Calculate hash of firmware data only with SHA-256
+            byte hash[SHA256_DIGEST_SIZE];
+            Sha sha;
+            uint32_t firmware_index = data_index - SHA256_DIGEST_SIZE;
+            wc_InitSha(&sha);
+            wc_ShaUpdate(&sha, data, firmware_index);
+            wc_ShaFinal(&sha, hash);
+
+            // Decode hash with RSA
+            RsaKey rsa;
+            wc_RsaPublicKeyDecodeRaw(RSA_N, sizeof(RSA_N), RSA_E, sizeof(RSA_E), &rsa);
+            int public_key_index = 0;
+            byte signed_hash[SHA256_DIGEST_SIZE];
+            wc_RsaSSL_Verify(data + firmware_index, SHA256_DIGEST_SIZE, signed_hash, SHA256_DIGEST_SIZE, &rsa); // RSA_KEY in secrets.h
+
+            // Compare the two hashes
+            if (memcmp(hash, signed_hash, SHA256_DIGEST_SIZE) != 0) {
+                uart_write(UART0, ERROR); // Reject the firmware
+                SysCtlReset();            // Reset device
+                return;
+            }
+            
             // Try to write flash and check for error
             if (program_flash((uint8_t *) page_addr, data, data_index)) {
                 uart_write(UART0, ERROR); // Reject the firmware
