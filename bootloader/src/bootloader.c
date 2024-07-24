@@ -126,18 +126,29 @@ void load_firmware(void) {
     uint32_t page_addr = FW_BASE;
     uint32_t version = 0;
     uint32_t size = 0;
-    
+
+    byte aad[4];
     // Get version.
     rcv = uart_read(UART0, BLOCKING, &read);
     version = (uint32_t)rcv;
+    aad[0] = (uint32_t)rcv;
     rcv = uart_read(UART0, BLOCKING, &read);
     version |= (uint32_t)rcv << 8;
+    aad[1] = (uint32_t)rcv;
 
     // Get size.
     rcv = uart_read(UART0, BLOCKING, &read);
     size = (uint32_t)rcv;
+    aad[2] = (uint32_t)rcv;
     rcv = uart_read(UART0, BLOCKING, &read);
     size |= (uint32_t)rcv << 8;
+    aad[3] = (uint32_t)rcv;
+
+    byte tag[16];
+    for(int i = 0; i < 16; i++) {
+        rcv = uart_read(UART0, BLOCKING, &read);
+        tag[i] = (uint32_t) rcv;
+    }
 
     // Compare to old version and abort if older (note special case for version 0).
     // If no metadata available (0xFFFF), accept version 1
@@ -163,7 +174,7 @@ void load_firmware(void) {
     uart_write(UART0, OK); // Acknowledge the metadata.
 
     /* Loop here until you can get all your characters and stuff */
-    unsigned char data[FW_LEN];
+    unsigned char data[5000];
     while (1) {
         // Frame Format
         // | size | data |
@@ -181,19 +192,21 @@ void load_firmware(void) {
         } // for
 
         // If we filed our page buffer, program it
-        if (frame_length == 0) {
+        if (frame_length == 0) {            
             Aes dec; // AES decryption object
-            unsigned char data_dec[sizeof(data)]; // buffer to store decrypted firmware
+            unsigned char data_dec[data_index]; // buffer to store decrypted firmware
             
             wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
             wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
-            wc_AesGcmDecrypt(&dec, data_dec, data, sizeof(data), AES_NONCE, sizeof(AES_NONCE), AES_TAG, sizeof(AES_TAG), AES_AAD, sizeof(AES_AAD)); // decrypt the encrypted firmware
+            wc_AesGcmDecrypt(&dec, data_dec, data, sizeof(data_dec), AES_NONCE, sizeof(AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
             wc_AesFree(&dec); // free the AES object ("remove" it from memory)
+
+            uart_write(UART0, OK);
             
             // write the decrypted data in pages to flash memory
-            for(int i = 0; i < size; i+=FLASH_PAGESIZE) {
+            for(int i = 0; i < data_index; i+=FLASH_PAGESIZE) {
                 unsigned char data_dec_page[FLASH_PAGESIZE];
-                for(int j = i; j < sizeof(data_dec) && j<i+FLASH_PAGESIZE; j++) {
+                for(int j = i; j < data_index && j<i+FLASH_PAGESIZE; j++) {
                     data_dec_page[j-i] = data_dec[j];
                 }
                 if (program_flash((uint8_t *) page_addr, data_dec_page, FLASH_PAGESIZE)) {
@@ -205,7 +218,6 @@ void load_firmware(void) {
                 page_addr += FLASH_PAGESIZE;
                 // data_index = 0;
             }
-            uart_write(UART0, OK);
             break;
         } // if
 

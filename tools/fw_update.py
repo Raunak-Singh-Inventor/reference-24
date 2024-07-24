@@ -29,16 +29,16 @@ import serial
 
 from util import *
 
-ser = serial.Serial("/dev/tty.usbmodem0E236F061", 115200)
+ser = serial.Serial("/dev/tty.usbmodem0E23A9A01", 115200)
 
 RESP_OK = b"\x00"
 FRAME_SIZE = 256
 
 
 def send_metadata(ser, metadata, debug=False):
-    assert(len(metadata) == 4)
+    assert(len(metadata) == 20)
     version = u16(metadata[:2], endian='little')
-    size = u16(metadata[2:], endian='little')
+    size = u16(metadata[2:4], endian='little')
     print(f"Version: {version}\nSize: {size} bytes\n")
 
     # Handshake for update
@@ -83,8 +83,8 @@ def update(ser, infile, debug):
     with open(infile, "rb") as fp:
         firmware_blob = fp.read()
 
-    metadata = firmware_blob[:4]
-    firmware = firmware_blob[4:]
+    metadata = firmware_blob[:20]
+    firmware = firmware_blob[20:]
 
     send_metadata(ser, metadata, debug=debug)
 

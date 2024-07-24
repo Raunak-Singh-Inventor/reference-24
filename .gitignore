@@ -30,6 +30,9 @@ cscope*
 *.axf
 *.bin 
 
+# Mac OS Files
+*.DS_store
+
 ## Python
 
 # Byte-compiled / optimized / DLL files
@@ -61,3 +64,8 @@ venv.bak/
 bootloader/inc/secrets.h
 tools/secret_build_output.txt
 secret_build_output.txt
+
+# Mac OpenOCD Debugger Config
+tools/debug-interface.cfg
+tools/board.cfg
+
