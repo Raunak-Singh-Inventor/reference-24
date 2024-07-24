@@ -37,7 +37,7 @@ def protect_firmware(infile, outfile, version, message):
     signature = signer.sign(h)
 
     # Append firmware and message to metadata
-    firmware_blob = metadata + firmware_and_message + signature
+    firmware_blob = metadata + signature + firmware_and_message
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
