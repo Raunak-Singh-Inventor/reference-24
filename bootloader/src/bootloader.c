@@ -52,6 +52,9 @@ uint8_t * fw_release_message_address;
 // Firmware Buffer
 unsigned char data[FLASH_PAGESIZE];
 
+//RSA Constant
+#define RSA_SIZE 2048
+
 // Delay to allow time to connect GDB
 // green LED as visual indicator of when this function is running
 void debug_delay_led() {
@@ -192,8 +195,8 @@ void load_firmware(void) {
 
             // Decode hash with RSA
             RsaKey rsa;
-            wc_RsaPublicKeyDecodeRaw(RSA_N, sizeof(RSA_N), RSA_E, sizeof(RSA_E), &rsa);
             int public_key_index = 0;
+            wc_RsaPublicKeyDecode(publicKey, &public_key_index, &rsa, RSA_SIZE);
             byte signed_hash[SHA256_DIGEST_SIZE];
             wc_RsaSSL_Verify(data + firmware_index, SHA256_DIGEST_SIZE, signed_hash, SHA256_DIGEST_SIZE, &rsa); // RSA_KEY in secrets.h
 
