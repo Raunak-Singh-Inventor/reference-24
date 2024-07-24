@@ -40,7 +40,7 @@ def make_bootloader() -> bool:
     with open('./src/secrets.h', 'w') as f:
         f.write("#ifndef SECRETS_H\n")
         f.write("#define SECRETS_H\n")
-        f.write("const uint8_t publicKey[" + RSA_LENGTH + "] = " + arrayize(pubKey) + ";\n")
+        f.write("const uint8_t publicKey[" + str(RSA_LENGTH) + "] = " + arrayize(pubKey) + ";\n")
         f.write("#endif")
 
     subprocess.call("make clean", shell=True)
