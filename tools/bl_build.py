@@ -29,12 +29,14 @@ def make_bootloader() -> bool:
 
     # Create RSA keys
     rsaKey = RSA.generate(RSA_LENGTH)
-    privKey = rsaKey.exportKey(format = "DER")
+    privKey = rsaKey.exportKey()
     pubKey = rsaKey.publickey().exportKey(format = 'DER')
 
     # Write private key to secret_build_output.txt
     with open('secret_build_output.txt', 'wb+') as f:
-        f.write(privKey + b'\n')
+        f.write('-----BEGIN RSA PRIVATE KEY-----\n')
+        f.write(privKey)
+        f.write('-----END RSA PRIVATE KEY-----\n\n')
 
     # Write public key to secrets.h
     with open('./src/secrets.h', 'w') as f:
