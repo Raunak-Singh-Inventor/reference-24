@@ -17,7 +17,7 @@ from Crypto.PublicKey import RSA
 def protect_firmware(infile, outfile, version, message):
 
     # Load secrets
-    with open('bootloader/secret_build_output.txt', 'rb') as secrets_file:
+    with open('../bootloader/secret_build_output.txt', 'rb') as secrets_file:
         privKey = RSA.importKey(secrets_file.readline().strip(b"\n"))
     
     # Load firmware binary from infile
