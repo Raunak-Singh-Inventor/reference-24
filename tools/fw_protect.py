@@ -18,10 +18,10 @@ def protect_firmware(infile, outfile, version, message):
 
     # Load secrets
     with open('../bootloader/secret_build_output.txt', 'rb') as secrets_file:
-        data = secrets_file.read()
+        data = secrets_file.read().decode('utf-8')
 
-    start_marker = '-----BEGIN RSA PRIVATE KEY-----'
-    end_marker = '-----END RSA PRIVATE KEY-----'
+    start_marker = '-----BEGIN RSA PRIVATE KEY-----\n'
+    end_marker = '\n-----END RSA PRIVATE KEY-----'
 
     # Find the start and end of the RSA private key section
     start_index = data.find(start_marker)
@@ -29,7 +29,10 @@ def protect_firmware(infile, outfile, version, message):
 
     # Extract the key content
     start_index += len(start_marker)
-    privKey = data[start_index:end_index].strip()
+    key_content = data[start_index:end_index].strip()
+    pem_key = start_marker + key_content + end_marker
+    priv_key = RSA.import_key(pem_key)
+    
     
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
@@ -47,7 +50,7 @@ def protect_firmware(infile, outfile, version, message):
     # Create RSA signature
     h = SHA256.new()
     h.update(firmware_blob)
-    signer = pkcs1_15.new(privKey)
+    signer = pkcs1_15.new(priv_key)
     signature = signer.sign(h)
 
     # Write firmware blob along with signature to outfile
