@@ -29,7 +29,7 @@ def make_bootloader() -> bool:
 
     # Create RSA keys
     rsaKey = RSA.generate(RSA_LENGTH)
-    privKey = rsaKey.exportKey(format = 'DER', pkcs = 8)
+    privKey = rsaKey.exportKey(format = 'PEM', pkcs = 8)
     pubKey = rsaKey.publickey().exportKey(format = 'DER')
 
     # Write private key to secret_build_output.txt
