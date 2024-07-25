@@ -21,7 +21,7 @@ def protect_firmware(infile, outfile, version, message):
         pwd = secrets_file.readline().strip(b'\n')
 
     # Load private key
-    with open("privatekey.pem", "rb") as f:
+    with open("../bootloader/privatekey.pem", "rb") as f:
         data = f.read()
         priv_key = RSA.import_key(data, pwd)
     
