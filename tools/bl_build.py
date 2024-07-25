@@ -19,16 +19,16 @@ BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 
 def write_bytearr_to_secrets(variable_name, variable, secrets):
     vals = [f'{k:02X}' for k in variable]
-    secrets.write("const byte " + variable_name + "[16] = {")
+    secrets.write("byte " + variable_name + "[" + str(len(variable)) + "] = {")
     secrets.write("0x" + vals[0])
-    for i in range(1, 16):
+    for i in range(1, len(variable)):
         secrets.write(", ")
         secrets.write("0x" + vals[i])
     secrets.write("};\n")
 
 def write_bytes_to_build_output(variable, build_output):
     vals = [f'{k:02X}' for k in variable]
-    for i in range(0, 16):
+    for i in range(0, len(variable)):
         build_output.write(vals[i])
         build_output.write(" ")
     build_output.write("\n")
@@ -36,7 +36,7 @@ def write_bytes_to_build_output(variable, build_output):
 
 def make_bootloader() -> bool:
     key = get_random_bytes(16) # generate 16-byte long key
-    nonce = get_random_bytes(16) # generate 16-byte nonce
+    nonce = b'\x00'*12
 
     build_output = open("secret_build_output.txt", "w")
     write_bytes_to_build_output(key, build_output=build_output)

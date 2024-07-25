@@ -22,19 +22,23 @@ def protect_firmware(infile, outfile, version, message):
     # Pack version and size into two little-endian shorts
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')  
 
+    firmware_blob = metadata
 
     build_output = open("secret_build_output.txt", "r")
     key = bytes.fromhex(build_output.readline())[:16]
-    nonce = bytes.fromhex(build_output.readline())[:16]
+    nonce = bytes.fromhex(build_output.readline())[:12]
     build_output.close()
 
-    cipher = AES.new(key, AES.MODE_GCM, nonce=nonce) # initialize AES cipher object
-    cipher.update(metadata) # add the additional associated data to the cipher
-    ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message) # encrypt the plaintext firmware
+    i = 0
+    while(i<len(firmware_and_message)):
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce) # initialize AES cipher object
+        cipher.update(metadata) # add the additional associated data to the cipher
+        ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i+256]) # encrypt the plaintext firmware
+        print(ciphertext, end="")
+        #nonce = int.to_bytes(int.from_bytes(nonce, byteorder="big")+1, byteorder="big")
+        firmware_blob += tag + ciphertext
+        i+=256
 
-    # Append firmware and message to metadata
-    firmware_blob = metadata + tag + ciphertext
-    # print(firmware_blob)
     # Write firmware blob to outfile
     with open(outfile, "wb+") as outfile:
         outfile.write(firmware_blob)

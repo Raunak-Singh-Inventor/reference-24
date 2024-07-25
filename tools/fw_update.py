@@ -32,11 +32,11 @@ from util import *
 ser = serial.Serial("/dev/tty.usbmodem0E23A9A01", 115200)
 
 RESP_OK = b"\x00"
-FRAME_SIZE = 256
+FRAME_SIZE = 256+16
 
 
 def send_metadata(ser, metadata, debug=False):
-    assert(len(metadata) == 20)
+    assert(len(metadata) == 4)
     version = u16(metadata[:2], endian='little')
     size = u16(metadata[2:4], endian='little')
     print(f"Version: {version}\nSize: {size} bytes\n")
@@ -61,7 +61,7 @@ def send_metadata(ser, metadata, debug=False):
         raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
 
 
-def send_frame(ser, frame, debug=False):
+def send_frame(ser, frame, idx, debug=False):
     ser.write(frame)  # Write the frame...
 
     if debug:
@@ -83,18 +83,17 @@ def update(ser, infile, debug):
     with open(infile, "rb") as fp:
         firmware_blob = fp.read()
 
-    metadata = firmware_blob[:20]
-    firmware = firmware_blob[20:]
+    metadata = firmware_blob[:4]
+    firmware = firmware_blob[4:]
 
     send_metadata(ser, metadata, debug=debug)
 
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
-        data = firmware[frame_start : frame_start + FRAME_SIZE]
+        data = firmware[frame_start : min(frame_start + FRAME_SIZE, len(firmware))]
 
         # Construct frame.
         frame = p16(len(data), endian='big') + data
-
-        send_frame(ser, frame, debug=debug)
+        send_frame(ser, frame, debug=debug, idx=idx)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
 
     print("Done writing firmware.")
