@@ -199,10 +199,10 @@ int load_firmware(void) {
         if (data_index == FLASH_PAGESIZE+64 || frame_length == 0) {
             for(i = 0; i < 4; i++) {
                 for(j = 0; j < 16; j++) {
-                    tag[j] = tag_and_data[i*256+j];
+                    tag[j] = tag_and_data[i*(256+16)+j];
                 }
                 for(j = 0; j < 256; j++) {
-                    ct[j] = tag_and_data[i*256+j+16];
+                    ct[j] = tag_and_data[i*(256+16)+j+16];
                 }
 
                 Aes dec; // AES decryption object
