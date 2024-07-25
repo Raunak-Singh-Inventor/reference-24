@@ -106,9 +106,13 @@ int main(void) {
 
         if (instruction == UPDATE) {
             uart_write_str(UART0, "U");
-            load_firmware();
-            uart_write_str(UART0, "Loaded new firmware.\n");
-            nl(UART0);
+            if (load_firmware() == 1) {
+                uart_write_str(UART0, "Failed to load firmware.\n");
+                SysCtlReset();
+            } else {
+                uart_write_str(UART0, "Loaded new firmware.\n");
+                nl(UART0);
+            }
         } else if (instruction == BOOT) {
             uart_write_str(UART0, "B");
             uart_write_str(UART0, "Booting firmware...\n");
@@ -121,7 +125,7 @@ int main(void) {
  /*
  * Load the firmware into flash.
  */
-void load_firmware(void) {
+int load_firmware(void) {
     int frame_length = 0;
     int read = 0;
     uint32_t rcv = 0;
@@ -253,7 +257,7 @@ void load_firmware(void) {
             if (program_flash((uint8_t *) page_addr, data, data_index)) {
                 uart_write(UART0, ERROR); // Reject the firmware
                 SysCtlReset();            // Reset device
-                return;
+                return 1;
             }
 
             // Update to next page
@@ -269,6 +273,8 @@ void load_firmware(void) {
 
         uart_write(UART0, OK); // Acknowledge the frame.
     } // while(1)
+
+    return 0;
 }
 
 /*
