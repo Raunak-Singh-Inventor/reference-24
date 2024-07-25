@@ -180,7 +180,6 @@ int load_firmware(void) {
     /* Loop here until you can get all your characters and stuff */
     int i = 0;
     int j = 0;
-    volatile int debug;
     while (1) {
 
         // Get two bytes for the length.
@@ -209,7 +208,6 @@ int load_firmware(void) {
                 wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
                 wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
                 int res = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), AES_NONCE, sizeof(AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
-                debug = res;
                 wc_AesFree(&dec); // free the AES object ("remove" it from memory)
             }
 
