@@ -28,7 +28,10 @@ def protect_firmware(infile, outfile, version, message):
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
         firmware = fp.read()
-
+        
+    # Pack version and size into two little-endian shorts
+    metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
+    
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
@@ -39,7 +42,7 @@ def protect_firmware(infile, outfile, version, message):
     signature = signer.sign(h)
 
     # Add together firmware and message along with signature to make the firmware blob
-    firmware_blob = firmware_and_message + signature
+    firmware_blob = metadata + firmware_and_message + signature
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
