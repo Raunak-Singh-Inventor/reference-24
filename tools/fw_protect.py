@@ -20,8 +20,8 @@ def protect_firmware(infile, outfile, version, message):
     with open('../bootloader/secret_build_output.txt', 'rb') as secrets_file:
         data = secrets_file.read().decode('utf-8')
 
-    start_marker = '-----BEGIN RSA PRIVATE KEY-----\n'
-    end_marker = '\n-----END RSA PRIVATE KEY-----'
+    start_marker = '-----BEGIN RSA PRIVATE KEY-----'
+    end_marker = '-----END RSA PRIVATE KEY-----'
 
     # Find the start and end of the RSA private key section
     start_index = data.find(start_marker)
@@ -30,7 +30,7 @@ def protect_firmware(infile, outfile, version, message):
     # Extract the key content
     start_index += len(start_marker)
     key_content = data[start_index:end_index].strip()
-    pem_key = start_marker + key_content + end_marker
+    pem_key = f'-----BEGIN RSA PRIVATE KEY-----\n{key_content}\n-----END RSA PRIVATE KEY-----'
     priv_key = RSA.import_key(pem_key)
     
     
