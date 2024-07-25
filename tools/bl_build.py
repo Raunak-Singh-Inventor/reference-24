@@ -34,9 +34,9 @@ def make_bootloader() -> bool:
 
     # Write private key to secret_build_output.txt
     with open('secret_build_output.txt', 'wb+') as f:
-        f.write('-----BEGIN RSA PRIVATE KEY-----\n')
+        f.write(b'-----BEGIN RSA PRIVATE KEY-----\n')
         f.write(privKey)
-        f.write('-----END RSA PRIVATE KEY-----\n\n')
+        f.write(b'-----END RSA PRIVATE KEY-----\n\n')
 
     # Write public key to secrets.h
     with open('./src/secrets.h', 'w') as f:
