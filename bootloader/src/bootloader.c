@@ -209,6 +209,13 @@ int load_firmware(void) {
                 wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
                 int res = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), AES_NONCE, sizeof(AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
                 wc_AesFree(&dec); // free the AES object ("remove" it from memory)
+
+                // increment nonce
+                for(int i = 11; i >= 0; i--) {
+                    if(++AES_NONCE[i]!=0) {
+                        break;
+                    }
+                }
             }
 
              // Try to write flash and check for error
@@ -217,13 +224,6 @@ int load_firmware(void) {
                 SysCtlReset();            // Reset device
                 return;
             }
-            
-            // // increment nonce
-            // for(int i = 11; i >= 0; i--) {
-            //     if(++AES_NONCE[i]!=0) {
-            //         break;
-            //     }
-            // }
 
             // Update to next page
             page_addr += FLASH_PAGESIZE;

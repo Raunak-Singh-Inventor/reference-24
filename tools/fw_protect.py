@@ -37,7 +37,7 @@ def protect_firmware(infile, outfile, version, message):
         cipher.update(metadata) # add the additional associated data to the cipher
         ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i+256]) # encrypt the plaintext firmware
         print(ciphertext, end="")
-        #nonce = int.to_bytes(int.from_bytes(nonce, byteorder="big")+1, byteorder="big")
+        nonce = int.to_bytes(int.from_bytes(nonce, byteorder="big")+1, byteorder="big")
         firmware_blob += tag + ciphertext
         i+=256
 

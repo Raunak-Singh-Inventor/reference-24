@@ -17,8 +17,10 @@ from Crypto.Random import get_random_bytes
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 
-def write_bytearr_to_secrets(variable_name, variable, secrets):
+def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     vals = [f'{k:02X}' for k in variable]
+    if(isConst):
+        secrets.write("const ")
     secrets.write("byte " + variable_name + "[" + str(len(variable)) + "] = {")
     secrets.write("0x" + vals[0])
     for i in range(1, len(variable)):
@@ -50,8 +52,8 @@ def make_bootloader() -> bool:
     secrets = open("inc/secrets.h", "w") 
     secrets.write("#ifndef SECRETS_H\n");
     secrets.write("#define SECRETS_H\n");
-    write_bytearr_to_secrets("AES_KEY", key, secrets=secrets)
-    write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets)
+    write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=True)
+    write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
     secrets.write("#endif")
     secrets.close()
 
