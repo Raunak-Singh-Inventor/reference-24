@@ -27,7 +27,7 @@
 #include "wolfssl/wolfcrypt/rsa.h"
 
 // Forward Declarations
-void load_firmware(void);
+int load_firmware(void);
 void boot_firmware(void);
 void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 
@@ -193,7 +193,7 @@ int load_firmware(void) {
 
             // Calculate hash of firmware data only with SHA-256
             unsigned char hash[WC_SHA256_DIGEST_SIZE];
-            Sha sha;
+            Sha256 sha;
             uint32_t firmware_index = data_index - WC_SHA256_DIGEST_SIZE;
             if (wc_InitSha256(&sha) != 0) {
                 uart_write(UART0, ERROR);
@@ -235,7 +235,6 @@ int load_firmware(void) {
             }
 
             // Verify the signature
-            int public_key_index = 0;
             size_t SIGN_SIZE = 256;
             unsigned char *signed_hash = NULL;
             word32 dec_len = wc_RsaSSL_VerifyInline(data + firmware_index, SIGN_SIZE, &signed_hash, &rsa);
