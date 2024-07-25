@@ -32,20 +32,14 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
-    # Pack version and size into two little-endian shorts
-    metadata = p16(version, endian='little') + p16(len(firmware), endian='little')  
-
-    # Append firmware and message to metadata
-    firmware_blob = metadata + firmware_and_message
-
     # Create RSA signature
     h = SHA256.new()
-    h.update(firmware_blob)
+    h.update(firmware_and_message)
     signer = pkcs1_15.new(priv_key)
     signature = signer.sign(h)
 
-    # Append signature to firmware_blob
-    firmware_blob += signature
+    # Add together firmware and message along with signature to make the firmware blob
+    firmware_blob = firmware_and_message + signature
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
