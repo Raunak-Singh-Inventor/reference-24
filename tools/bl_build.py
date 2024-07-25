@@ -13,6 +13,7 @@ import os
 import pathlib
 import subprocess
 from Crypto.PublicKey import RSA
+from Crypto.Random import get_random_bytes
 
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
@@ -32,12 +33,21 @@ def make_bootloader() -> bool:
     privKey = rsaKey.exportKey()
     pubKey = rsaKey.publickey().exportKey(format = 'DER')
 
+    # Create password for RSA key
+    pwd = get_random_bytes(16)
+
     # Write private key to secret_build_output.txt
     with open('secret_build_output.txt', 'wb+') as f:
-        f.write(b'-----BEGIN RSA PRIVATE KEY-----\n')
-        f.write(privKey)
-        f.write(b'-----END RSA PRIVATE KEY-----\n\n')
+        f.write(pwd + b'\n')
 
+    # Export private key securely to privatekey.pem
+    with open("privatekey.pem", "wb") as f:
+        data = mykey.export_key(passphrase=pwd,
+                                pkcs=8,
+                                protection='PBKDF2WithHMAC-SHA512AndAES256-CBC',
+                                prot_params={'iteration_count':131072})
+        f.write(data)
+    
     # Write public key to secrets.h
     with open('./src/secrets.h', 'w') as f:
         f.write("#ifndef SECRETS_H\n")
