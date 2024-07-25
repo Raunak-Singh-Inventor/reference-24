@@ -30,7 +30,6 @@ def make_bootloader() -> bool:
 
     # Create RSA keys
     rsaKey = RSA.generate(RSA_LENGTH)
-    privKey = rsaKey.exportKey()
     pubKey = rsaKey.publickey().exportKey(format = 'DER')
 
     # Create password for RSA key
@@ -42,7 +41,7 @@ def make_bootloader() -> bool:
 
     # Export private key securely to privatekey.pem
     with open("privatekey.pem", "wb") as f:
-        data = mykey.export_key(passphrase=pwd,
+        data = rsaKey.export_key(passphrase=pwd,
                                 pkcs=8,
                                 protection='PBKDF2WithHMAC-SHA512AndAES256-CBC',
                                 prot_params={'iteration_count':131072})
