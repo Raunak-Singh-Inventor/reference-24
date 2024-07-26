@@ -24,7 +24,7 @@
 #include "wolfssl/wolfcrypt/sha.h"
 #include "wolfssl/wolfcrypt/rsa.h"
 
-#include "secrets.h"
+#include "../inc/secrets.h"
 
 // Forward Declarations
 void load_firmware(void);

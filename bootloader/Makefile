@@ -33,9 +33,9 @@ uart:
 	make -C ${LIB}/uart
 
 # WOLFSSL CONFIGURATION
-TOOLCHAIN = /opt/homebrew/bin/arm-none-eabi-
+TOOLCHAIN = /usr/bin/arm-none-eabi-
 USER_SETTINGS_DIR = $(abspath ${INC})
-ARCHFLAGS = "-mcpu=cortex-m4 -mthumb -mabi=aapcs -mfpu=fpv4-sp-d16 -mfloat-abi=hard"
+ARCHFLAGS = "-mcpu=cortex-m4 -mthumb -mabi=aapcs -mfpu=fpv4-sp-d16 -mfloat-abi=hard -Wno-incompatible-pointer-types"
 NO_EXAMPLES = true
 FIPS = 0
 WOLFSSL_MAKE_ARGS = TOOLCHAIN=$(TOOLCHAIN) \
