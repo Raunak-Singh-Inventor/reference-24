@@ -168,6 +168,7 @@ void load_firmware(void) {
     }
 
     if (version != 0 && version < old_version) {
+        delay_ms(4900);
         uart_write(UART0, ERROR); // Reject the metadata.
         SysCtlReset();            // Reset device
         return;
@@ -202,7 +203,7 @@ void load_firmware(void) {
 
         total_frame_amt +=frame_length;
 
-        if(total_frame_amt > 30000){
+        if(total_frame_amt > 31744){
             break;
         }
 
