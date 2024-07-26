@@ -24,6 +24,8 @@ def protect_firmware(infile, outfile, version, message):
     # Pack version and size into two little-endian shorts
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')  
 
+    print(metadata)
+
     firmware_blob = metadata
 
     build_output = open("secret_build_output.txt", "r")
