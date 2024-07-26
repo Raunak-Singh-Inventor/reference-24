@@ -27,7 +27,7 @@
 #include "secrets.h"
 
 // Forward Declarations
-int load_firmware(void);
+void load_firmware(void);
 void boot_firmware(void);
 void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 
@@ -96,8 +96,6 @@ int main(void) {
     // enable the GPIO pin for digital function.
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
 
-    // debug_delay_led();
-
     initialize_uarts(UART0);
 
     uart_write_str(UART0, "Welcome to the BWSI Vehicle Update Service!\n");
@@ -120,11 +118,22 @@ int main(void) {
     }
 }
 
+/*
+*   Credits for this function: Amit Rana 
+*/
+void delay_ms(uint32_t ui32Ms) {
+    // 1 clock cycle = 1 / SysCtlClockGet() second
+    // 1 SysCtlDelay = 3 clock cycle = 3 / SysCtlClockGet() second
+    // 1 second = SysCtlClockGet() / 3
+    // 0.001 second = 1 ms = SysCtlClockGet() / 3 / 1000
+    
+    SysCtlDelay(ui32Ms * (SysCtlClockGet() / 3 / 1000));
+}
 
  /*
  * Load the firmware into flash.
  */
-int load_firmware(void) {
+void load_firmware(void) {
     int frame_length = 0;
     int read = 0;
     uint32_t rcv = 0;
@@ -180,6 +189,7 @@ int load_firmware(void) {
     /* Loop here until you can get all your characters and stuff */
     int i = 0;
     int j = 0;
+    bool flag = false;
     while (1) {
 
         // Get two bytes for the length.
@@ -196,6 +206,11 @@ int load_firmware(void) {
 
         // If we filed our page buffer, program it
         if (data_index == FLASH_PAGESIZE+64 || frame_length == 0) {
+            if(frame_length==0) {
+                uart_write(UART0, OK);
+                break;
+            }
+
             for(i = 0; i < 4; i++) {
                 for(j = 0; j < 16; j++) {
                     tag[j] = tag_and_data[i*(256+16)+j];
@@ -205,17 +220,28 @@ int load_firmware(void) {
                 }
 
                 Aes dec; // AES decryption object
-                wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
-                wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
-                int res = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), AES_NONCE, sizeof(AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
+                int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
+                int res2 = wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
+                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), AES_NONCE, sizeof(AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
                 wc_AesFree(&dec); // free the AES object ("remove" it from memory)
 
+                if(res1!=0 || res2!=0 || res3!=0) {
+                    delay_ms(4900);
+                    flag = true;
+                    break;
+                }
+
                 // increment nonce
-                for(int i = 11; i >= 0; i--) {
+                for(int i = 0; i < 12; i++) {
                     if(++AES_NONCE[i]!=0) {
                         break;
                     }
                 }
+            }
+
+            if (flag) {
+                uart_write(UART0, OK);
+                break;
             }
 
              // Try to write flash and check for error
@@ -228,17 +254,10 @@ int load_firmware(void) {
             // Update to next page
             page_addr += FLASH_PAGESIZE;
             data_index = 0;
-
-            // If at end of firmware, go to main
-            if (frame_length == 0) {
-                uart_write(UART0, OK);
-                break;
-            }
         } // if
 
         uart_write(UART0, OK); // Acknowledge the frame.
     } // while(1)
-    return debug;
 }
 
 /*
