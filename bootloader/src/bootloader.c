@@ -140,6 +140,7 @@ int load_firmware(void) {
 
     uint32_t data_index = 0;
     uint32_t page_addr = FW_TMP;
+    uint32_t page_addr2 = FW_BASE;
     uint32_t version = 0;
     uint32_t size = 0;
 
@@ -305,11 +306,9 @@ int load_firmware(void) {
         return 1;
     }
 
-    page_addr = FW_BASE;
-    page_addr2 = FW_TMP;
     for(int i = 0; i < total_frame_amt; i += FLASH_PAGESIZE) {
         // Try to write flash and check for error
-        if (program_flash((uint8_t *) page_addr, (uint8_t *) page_addr2, FLASH_PAGESIZE)) {
+        if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
             return 0;
         }
