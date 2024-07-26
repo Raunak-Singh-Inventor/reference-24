@@ -191,6 +191,7 @@ int load_firmware(void) {
     for (int i = 0; i < signature_size; ++i) {
             signature[i] = uart_read(UART0, BLOCKING, &read);
     } // for
+    uart_write(UART0, OK); // Acknowledge the signature.
     
     // Initialize Sha256 object
     if (wc_InitSha256(&sha) != 0) {

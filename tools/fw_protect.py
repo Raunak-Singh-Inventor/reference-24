@@ -28,10 +28,10 @@ def protect_firmware(infile, outfile, version, message):
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
         firmware = fp.read()
-        
+
     # Pack version and size into two little-endian shorts
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
-    
+
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 

@@ -95,7 +95,7 @@ def update(ser, infile, debug):
     print(f"Wrote frame signature ({len(signature)} bytes)")
 
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
-        data = firmware[frame_start : frame_start + FRAME_SIZE]
+        data = firmware[frame_start:frame_start + FRAME_SIZE]
 
         # Construct frame.
         frame = p16(len(data), endian='big') + data
