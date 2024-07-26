@@ -28,6 +28,7 @@ cscope*
 
 # Keys
 *.pem
+secrets.h
 
 # Executables
 *.axf
