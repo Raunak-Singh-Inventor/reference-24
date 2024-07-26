@@ -198,7 +198,7 @@ int load_firmware(void) {
         return 1;
     }
 
-    
+    int total_frame_amt = 0;
 
     /* Loop here until you can get all your characters and stuff */
     while (1) {
@@ -208,6 +208,12 @@ int load_firmware(void) {
         frame_length = (int)rcv << 8;
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length += (int)rcv;
+
+        total_frame_amt +=frame_length;
+
+        if(total_frame_amt > 31744){
+            break;
+        }
 
         // Get the number of bytes specified
         for (int i = 0; i < frame_length; ++i) {
@@ -300,30 +306,17 @@ int load_firmware(void) {
     }
 
     page_addr = FW_BASE;
-    data_index = 0;
-    uint32_t firmware_index = 0;
-    while (1) {
-        data[data_index] = *(page_addr + firmware_index)
-        data_index += 1;
-        firmware_index += 1;
-
-        if (data_index == FLASH_PAGESIZE) {
-
-            // Try to write flash and check for error
-            if (program_flash((uint8_t *) page_addr, data, data_index)) {
-                SysCtlReset();            // Reset device
-                return 0;
-            }
-
-            // Update to next page
-            page_addr += FLASH_PAGESIZE;
-            data_index = 0;
-
-            // If at end of firmware, go to main
-            if (*(page_addr + firmware_index) == 0) {
-                break;
-            }
+    page_addr2 = FW_TMP;
+    for(int i = 0; i < total_frame_amt; i += FLASH_PAGESIZE) {
+        // Try to write flash and check for error
+        if (program_flash((uint8_t *) page_addr, (uint8_t *) page_addr2, FLASH_PAGESIZE)) {
+            SysCtlReset();            // Reset device
+            return 0;
         }
+
+        // Update to next page
+        page_addr += FLASH_PAGESIZE;
+        page_addr2 += FLASH_PAGESIZE;
     }
 }
 
