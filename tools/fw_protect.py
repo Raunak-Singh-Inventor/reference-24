@@ -7,6 +7,7 @@
 Firmware Bundle-and-Protect Tool
 
 """
+import os
 import argparse
 from pwn import *
 from Crypto.Signature import pkcs1_15
@@ -41,6 +42,9 @@ def protect_firmware(infile, outfile, version, message):
     signer = pkcs1_15.new(priv_key)
     signature = signer.sign(h)
 
+    # Delete privatekey.pem
+    os.remove("..bootloader/privatekey.pem")
+    
     # Add together firmware and message along with signature to make the firmware blob
     firmware_blob = metadata + signature + firmware_and_message
 
