@@ -190,13 +190,21 @@ void load_firmware(void) {
     int i = 0;
     int j = 0;
     bool flag = false;
+    int total_frame_amt = 0;
     while (1) {
+
 
         // Get two bytes for the length.
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length = (int)rcv << 8;
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length += (int)rcv;
+
+        total_frame_amt +=frame_length;
+
+        if(total_frame_amt > 30000){
+            break;
+        }
 
         // Get the number of bytes specified
         for (i = 0; i < frame_length; ++i) {
