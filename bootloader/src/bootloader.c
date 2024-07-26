@@ -34,6 +34,7 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 // Firmware Constants
 #define METADATA_BASE 0xFC00 // base address of version and firmware size in Flash
 #define FW_BASE 0x10000      // base address of firmware in Flash
+#define FW_TMP 0x20000 // temporary address of firmware in Flash without checking
 #define MAX_ENC_ALG_SZ 32   // maximum bound on digest algorithm encoding around digest
 
 // FLASH Constants
@@ -46,7 +47,7 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 #define UPDATE ((unsigned char)'U')
 #define BOOT ((unsigned char)'B')
 
-// Device metadata
+// Device Metadata
 uint16_t * fw_version_address = (uint16_t *)METADATA_BASE;
 uint16_t * fw_size_address = (uint16_t *)(METADATA_BASE + 2);
 uint8_t * fw_release_message_address;
@@ -56,6 +57,10 @@ unsigned char data[FLASH_PAGESIZE];
 
 //RSA Constant
 #define RSA_SIZE 2048
+
+// Sha-256 Object and Buffer
+unsigned char hash[WC_SHA256_DIGEST_SIZE];
+Sha256 sha;
 
 // Delay to allow time to connect GDB
 // green LED as visual indicator of when this function is running
@@ -134,9 +139,11 @@ int load_firmware(void) {
     uint32_t rcv = 0;
 
     uint32_t data_index = 0;
-    uint32_t page_addr = FW_BASE;
+    uint32_t page_addr = FW_TMP;
     uint32_t version = 0;
     uint32_t size = 0;
+
+    
 
     // Get version.
     rcv = uart_read(UART0, BLOCKING, &read);
@@ -173,6 +180,26 @@ int load_firmware(void) {
 
     uart_write(UART0, OK); // Acknowledge the metadata.
 
+    // Get signature
+    int signature_size;
+    rcv = uart_read(UART0, BLOCKING, &read);
+    signature_size = (int)rcv << 8;
+    rcv = uart_read(UART0, BLOCKING, &read);
+    signature_size += (int)rcv;
+    unsigned char signature[signature_size];
+    for (int i = 0; i < signature_size; ++i) {
+            signature[i] = uart_read(UART0, BLOCKING, &read);
+    } // for
+    
+    // Initialize Sha256 object
+    if (wc_InitSha256(&sha) != 0) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+
+    
+
     /* Loop here until you can get all your characters and stuff */
     while (1) {
 
@@ -190,77 +217,18 @@ int load_firmware(void) {
 
         // If we filed our page buffer, program it
         if (data_index == FLASH_PAGESIZE || frame_length == 0) {
-
-            // Calculate hash of firmware data only with SHA-256
-            unsigned char hash[WC_SHA256_DIGEST_SIZE];
-            Sha256 sha;
-            uint32_t firmware_index = data_index - WC_SHA256_DIGEST_SIZE;
-            if (wc_InitSha256(&sha) != 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-            if (wc_Sha256Update(&sha, data, firmware_index) != 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-            if (wc_Sha256Final(&sha, hash) != 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-
-            // Encode hash with algorithm information as per PKCS#1.5
-            unsigned char enc_hash[WC_SHA256_DIGEST_SIZE + MAX_ENC_ALG_SZ];
-            word32 enc_len = wc_EncodeSignature(enc_hash, hash, sizeof(hash), SHA256h);
-            if ((int) enc_len < 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-
-            // Initialize RSA key and decode public key
-            RsaKey rsa;
-            word32 idx = 0;
-            if (wc_InitRsaKey(&rsa, NULL) != 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-            if (wc_RsaPublicKeyDecode(publicKey, &idx, &rsa, sizeof(publicKey)) != 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-
-            // Verify the signature
-            size_t SIGN_SIZE = 256;
-            unsigned char *signed_hash = NULL;
-            word32 dec_len = wc_RsaSSL_VerifyInline(data + firmware_index, SIGN_SIZE, &signed_hash, &rsa);
-            if ((int) dec_len < 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-
-            // Compare the two hashes
-            if (enc_len != dec_len) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
-            }
-            if (memcmp(enc_hash, signed_hash, enc_len) != 0) {
-                uart_write(UART0, ERROR); // Reject the firmware
-                SysCtlReset();            // Reset device
-                return 1;
-            }
             
             // Try to write flash and check for error
             if (program_flash((uint8_t *) page_addr, data, data_index)) {
                 uart_write(UART0, ERROR); // Reject the firmware
                 SysCtlReset();            // Reset device
                 return 0;
+            }
+
+            if (wc_Sha256Update(&sha, data, data_index) != 0) {
+                uart_write(UART0, ERROR);
+                SysCtlReset();
+                return 1;
             }
 
             // Update to next page
@@ -276,6 +244,87 @@ int load_firmware(void) {
 
         uart_write(UART0, OK); // Acknowledge the frame.
     } // while(1)
+
+            
+    if (wc_Sha256Final(&sha, hash) != 0) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+
+    // Encode hash with algorithm information as per PKCS#1.5
+    unsigned char enc_hash[WC_SHA256_DIGEST_SIZE + MAX_ENC_ALG_SZ];
+    word32 enc_len = wc_EncodeSignature(enc_hash, hash, sizeof(hash), SHA256h);
+    if ((int) enc_len < 0) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+
+    // Initialize RSA key and decode public key
+    RsaKey rsa;
+    word32 idx = 0;
+    if (wc_InitRsaKey(&rsa, NULL) != 0) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+            
+    if (wc_RsaPublicKeyDecode(publicKey, &idx, &rsa, sizeof(publicKey)) != 0) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+
+    // Verify the signature
+    size_t SIGN_SIZE = 256;
+    unsigned char *signed_hash = NULL;
+    word32 dec_len = wc_RsaSSL_VerifyInline(signature, SIGN_SIZE, &signed_hash, &rsa); //fix addressing here
+    if ((int) dec_len < 0) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+
+    // Compare the two hashes
+    if (enc_len != dec_len) {
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return 1;
+    }
+
+    if (memcmp(enc_hash, signed_hash, enc_len) != 0) {
+        uart_write(UART0, ERROR); // Reject the firmware
+        SysCtlReset();            // Reset device
+        return 1;
+    }
+
+    page_addr = FW_BASE;
+    data_index = 0;
+    uint32_t firmware_index = 0;
+    while (1) {
+        data[data_index] = *(page_addr + firmware_index)
+        data_index += 1;
+        firmware_index += 1;
+
+        if (data_index == FLASH_PAGESIZE) {
+
+            // Try to write flash and check for error
+            if (program_flash((uint8_t *) page_addr, data, data_index)) {
+                SysCtlReset();            // Reset device
+                return 0;
+            }
+
+            // Update to next page
+            page_addr += FLASH_PAGESIZE;
+            data_index = 0;
+
+            // If at end of firmware, go to main
+            if (*(page_addr + firmware_index) == 0) {
+                break;
+            }
+        }
+    }
 }
 
 /*
