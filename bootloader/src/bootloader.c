@@ -278,7 +278,7 @@ void load_firmware(void) {
             }
 
             if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
-                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly);
+                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly);
             }
 
             // Update to next page
