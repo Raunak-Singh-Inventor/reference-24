@@ -106,9 +106,12 @@ int main(void) {
     EEPROMProgram(AES_KEY, 0x0, sizeof(AES_KEY));
     EEPROMProgram(AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(AES_NONCE));
 
-    // TODO: implement this erasing of key and nonce
-    // FlashErase(AES_KEY)
-    // FlashErase(AES_NONCE)
+    for(int i = 0; i < sizeof(AES_KEY); i++) {
+        AES_KEY[i] = 255;
+    }
+    for(int i = 0; i < sizeof(AES_NONCE); i++) {
+        AES_NONCE[i] = 255;
+    }
 
     initialize_uarts(UART0);
 
@@ -243,7 +246,7 @@ void load_firmware(void) {
                     ct[j] = tag_and_data[i*(256+16)+j+16];
                 }
 
-                const byte EEPROM_AES_KEY[16];
+                byte EEPROM_AES_KEY[16];
                 byte EEPROM_AES_NONCE[12];
                 EEPROMRead(EEPROM_AES_KEY, 0x0, 16);
                 EEPROMRead(EEPROM_AES_NONCE, 0x0 + 16, 12);
@@ -259,8 +262,12 @@ void load_firmware(void) {
                     }
                 }
                 EEPROMProgram(EEPROM_AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(EEPROM_AES_NONCE));
-                // FlashErase(EEPROM_AES_KEY);
-                // FlashErase(EEPROM_AES_NONCE);
+                for(int i = 0; i < sizeof(AES_KEY); i++) {
+                    EEPROM_AES_KEY[i] = 255;
+                }
+                for(int i = 0; i < sizeof(AES_NONCE); i++) {
+                    EEPROM_AES_NONCE[i] = 255;
+                }
 
                 if(res1!=0 || res2!=0 || res3!=0) {
                     delay_ms(4900);

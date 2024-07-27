@@ -55,7 +55,7 @@ def make_bootloader() -> bool:
     secrets = open("inc/secrets.h", "w") 
     secrets.write("#ifndef SECRETS_H\n");
     secrets.write("#define SECRETS_H\n");
-    write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=True)
+    write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
     secrets.write("#endif")
     secrets.close()
@@ -63,7 +63,7 @@ def make_bootloader() -> bool:
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")
 
-    # os.remove("inc/secrets.h")
+    os.remove("inc/secrets.h")
 
     # Return True if make returned 0, otherwise return False.
     return status == 0
