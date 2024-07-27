@@ -13,6 +13,7 @@
 #include "driverlib/flash.h"     // FLASH API
 #include "driverlib/interrupt.h" // Interrupt API
 #include "driverlib/sysctl.h"    // System control API (clock/reset)
+#include "driverlib/eeprom.h"    // EEPROM API
 
 // Application Imports
 #include "driverlib/gpio.h"
@@ -91,6 +92,23 @@ int main(void) {
     // Enable the GPIO pin for the LED (PF3).  Set the direction as output, and
     // enable the GPIO pin for digital function.
     GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
+
+    SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
+
+    // Check if the peripheral access is enabled.
+    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_EEPROM0)) {
+    }
+
+    EEPROMInit();
+
+    EEPROMMassErase();
+
+    EEPROMProgram(AES_KEY, 0x0, sizeof(AES_KEY));
+    EEPROMProgram(AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(AES_NONCE));
+
+    // TODO: implement this erasing of key and nonce
+    // FlashErase(AES_KEY)
+    // FlashErase(AES_NONCE)
 
     initialize_uarts(UART0);
 
@@ -225,23 +243,29 @@ void load_firmware(void) {
                     ct[j] = tag_and_data[i*(256+16)+j+16];
                 }
 
+                const byte EEPROM_AES_KEY[16];
+                byte EEPROM_AES_NONCE[12];
+                EEPROMRead(EEPROM_AES_KEY, 0x0, 16);
+                EEPROMRead(EEPROM_AES_NONCE, 0x0 + 16, 12);
                 Aes dec; // AES decryption object
                 int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
-                int res2 = wc_AesGcmSetKey(&dec, AES_KEY, sizeof(AES_KEY)); // set key for AES-GCM
-                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), AES_NONCE, sizeof(AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
+                int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, sizeof(EEPROM_AES_KEY)); // set key for AES-GCM
+                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), EEPROM_AES_NONCE, sizeof(EEPROM_AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
                 wc_AesFree(&dec); // free the AES object ("remove" it from memory)
+                // increment nonce
+                for(int i = 0; i < 12; i++) {
+                    if(++EEPROM_AES_NONCE[i]!=0) {
+                        break;
+                    }
+                }
+                EEPROMProgram(EEPROM_AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(EEPROM_AES_NONCE));
+                // FlashErase(EEPROM_AES_KEY);
+                // FlashErase(EEPROM_AES_NONCE);
 
                 if(res1!=0 || res2!=0 || res3!=0) {
                     delay_ms(4900);
                     flag = true;
                     break;
-                }
-
-                // increment nonce
-                for(int i = 0; i < 12; i++) {
-                    if(++AES_NONCE[i]!=0) {
-                        break;
-                    }
                 }
             }
 

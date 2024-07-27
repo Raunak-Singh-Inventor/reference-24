@@ -18,8 +18,11 @@ REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
+    if variable_name!="AES_KEY" and variable_name!="AES_NONCE":
+        return
+    
     vals = [f'{k:02X}' for k in variable]
-    if(isConst):
+    if isConst:
         secrets.write("const ")
     secrets.write("byte " + variable_name + "[" + str(len(variable)) + "] = {")
     secrets.write("0x" + vals[0])
@@ -60,7 +63,7 @@ def make_bootloader() -> bool:
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")
 
-    os.remove("inc/secrets.h")
+    # os.remove("inc/secrets.h")
 
     # Return True if make returned 0, otherwise return False.
     return status == 0
