@@ -8,6 +8,7 @@
 #include "inc/hw_types.h"     // Boolean type
 #include "inc/tm4c123gh6pm.h" // Peripheral Bit Masks and Registers
 // #include "inc/hw_ints.h" // Interrupt numbers
+#include "inc/hw_flash.h"
 
 // Driver API Imports
 #include "driverlib/flash.h"     // FLASH API
@@ -25,6 +26,8 @@
 #include "wolfssl/wolfcrypt/rsa.h"
 
 #include "secrets.h"
+
+#include <stdint.h>
 
 // Forward Declarations
 void load_firmware(void);
@@ -78,8 +81,18 @@ void debug_delay_led() {
     GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
 }
 
+void disableDebugging(void){
+    // Write the unlock value to the flash memory protection registers
+    HWREG(FLASH_FMPRE0) = 0xFFFFFFFF;
+    HWREG(FLASH_FMPPE0) = 0xFFFFFFFF;
+
+    // Disable the debug interface by writing to the FMD and FMC registers
+    HWREG(FLASH_FMD) = 0xA4420004;
+    HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
+}
 
 int main(void) {
+    disableDebugging();
 
     // Enable the GPIO port that is used for the on-board LED.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
