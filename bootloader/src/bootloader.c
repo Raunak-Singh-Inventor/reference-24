@@ -91,13 +91,17 @@ void disableDebugging(void){
     HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
 }
 
+// void setFlashProtection(uint32_t addr, uint32_t len, tFlashProtection perm) {
+//     uint32_t addr1 = addr;
+//     while(addr1 < addr + len) {
+//         FlashProtectSet(addr1, perm);
+//         addr1 += 2*FLASH_PAGESIZE;
+//     }
+// }
+
 int main(void) {
     disableDebugging();
-    uint32_t addr1 = FW_BASE;
-    while(addr1 < FW_BASE + 0x7800) {
-        FlashProtectSet(addr1, FlashReadWrite);
-        addr1 += 2*FLASH_PAGESIZE;
-    }
+    // setFlashProtection(FW_BASE, 0x7800, FlashReadWrite);
 
     // Enable the GPIO port that is used for the on-board LED.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
@@ -208,8 +212,6 @@ void load_firmware(void) {
     bool flag = false;
     int total_frame_amt = 0;
     while (1) {
-
-
         // Get two bytes for the length.
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length = (int)rcv << 8;
@@ -273,6 +275,10 @@ void load_firmware(void) {
                 uart_write(UART0, ERROR); // Reject the firmware
                 SysCtlReset();            // Reset device
                 return;
+            }
+
+            if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
+                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly);
             }
 
             // Update to next page
