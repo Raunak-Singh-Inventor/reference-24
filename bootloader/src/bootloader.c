@@ -187,7 +187,7 @@ int load_firmware(void) {
     signature_size = (int)rcv << 8;
     rcv = uart_read(UART0, BLOCKING, &read);
     signature_size += (int)rcv;
-    unsigned char signature[signature_size];
+    unsigned char signature[signature_size * 2 + MAX_ENC_ALG_SZ];
     for (int i = 0; i < signature_size; ++i) {
             signature[i] = uart_read(UART0, BLOCKING, &read);
     } // for
@@ -286,12 +286,14 @@ int load_firmware(void) {
 
     // Verify the signature
     size_t SIGN_SIZE = 256;
-    unsigned char *signed_hash = NULL;
+    unsigned char *signed_hash = signature + SIGN_SIZE;
     word32 dec_len = wc_RsaSSL_VerifyInline(signature, SIGN_SIZE, &signed_hash, &rsa); //fix addressing here
     if ((int) dec_len < 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
         return 1;
+    } else {
+        uart_write(UART0, OK);
     }
 
     // Compare the two hashes
@@ -299,25 +301,31 @@ int load_firmware(void) {
         uart_write(UART0, ERROR);
         SysCtlReset();
         return 1;
+    } else {
+        uart_write(UART0, OK);
     }
 
     if (memcmp(enc_hash, signed_hash, enc_len) != 0) {
         uart_write(UART0, ERROR); // Reject the firmware
         SysCtlReset();            // Reset device
         return 1;
+    } else {
+        uart_write(UART0, OK);
     }
 
     for(int i = 0; i < total_frame_amt; i += FLASH_PAGESIZE) {
         // Try to write flash and check for error
         if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
-            return 0;
+            return 1;
         }
 
         // Update to next page
         page_addr += FLASH_PAGESIZE;
         page_addr2 += FLASH_PAGESIZE;
     }
+
+    return 0;
 }
 
 /*

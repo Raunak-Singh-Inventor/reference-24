@@ -39,9 +39,8 @@ def protect_firmware(infile, outfile, version, message):
     # Create RSA signature
     h = SHA256.new()
     h.update(firmware_and_message)
-    # signer = pkcs1_15.new(priv_key)
-    # signature = signer.sign(h)
-    signature = pss.new(priv_key).sign(h)
+    signer = pkcs1_15.new(priv_key)
+    signature = signer.sign(h)
 
     # Delete privatekey.pem
     os.remove("../bootloader/privatekey.pem")
