@@ -377,7 +377,7 @@ FlashProtectSet(uint32_t ui32Address, tFlashProtection eProtect)
     //
     ASSERT(!(ui32Address & (FLASH_PROTECT_SIZE - 1)));
     ASSERT((eProtect == FlashReadWrite) || (eProtect == FlashReadOnly) ||
-           (eProtect == FlashExecuteOnly));
+           (eProtect == FlashExecuteOnly) || (eProtect == FlashWriteOnly));
 
     //
     // Convert the address into a block number.
@@ -413,6 +413,30 @@ FlashProtectSet(uint32_t ui32Address, tFlashProtection eProtect)
             //
             ui32ProtectRE &= ~(0x1 << ui32Address);
             ui32ProtectPE &= ~(0x1 << ui32Address);
+
+            //
+            // We're done handling this protection.
+            //
+            break;
+        }
+
+        //
+        // Make this block read only.
+        //
+        case FlashWriteOnly:
+        {
+            //
+            // The block can not be made read only if it is execute only.
+            //
+            if(((ui32ProtectPE >> ui32Address) & 0x1) != 0x1)
+            {
+                return(-1);
+            }
+
+            //
+            // Make this block write only.
+            //
+            ui32ProtectRE &= ~(0x1 << ui32Address);
 
             //
             // We're done handling this protection.

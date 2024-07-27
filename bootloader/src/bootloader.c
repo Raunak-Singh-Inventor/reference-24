@@ -25,7 +25,7 @@
 #include "wolfssl/wolfcrypt/sha.h"
 #include "wolfssl/wolfcrypt/rsa.h"
 
-#include "../inc/secrets.h"
+#include "secrets.h"
 
 #include <stdint.h>
 
@@ -93,6 +93,11 @@ void disableDebugging(void){
 
 int main(void) {
     disableDebugging();
+    uint32_t addr1 = FW_BASE;
+    while(addr1 < FW_BASE + 0x7800) {
+        FlashProtectSet(addr1, FlashReadWrite);
+        addr1 += 2*FLASH_PAGESIZE;
+    }
 
     // Enable the GPIO port that is used for the on-board LED.
     SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);

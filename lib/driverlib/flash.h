@@ -63,7 +63,8 @@ typedef enum
 {
     FlashReadWrite,                         // Flash can be read and written
     FlashReadOnly,                          // Flash can only be read
-    FlashExecuteOnly                        // Flash can only be executed
+    FlashExecuteOnly,                        // Flash can only be executed
+    FlashWriteOnly
 }
 tFlashProtection;
 
