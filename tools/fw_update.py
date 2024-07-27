@@ -29,7 +29,7 @@ import serial
 
 from util import *
 
-ser = serial.Serial("/dev/tty.usbmodem0E237B131", 115200)
+ser = serial.Serial("/dev/tty.usbmodem0E238EE21", 115200)
 
 RESP_OK = b"\x00"
 FRAME_SIZE = 256+16
