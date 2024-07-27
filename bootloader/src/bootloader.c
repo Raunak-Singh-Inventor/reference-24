@@ -53,10 +53,6 @@ uint8_t * fw_release_message_address;
 // Firmware Buffer
 unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 
-uint32_t data_index = 0;
-
-int res3;
-
 // Delay to allow time to connect GDB
 // green LED as visual indicator of when this function is running
 void debug_delay_led() {
@@ -138,6 +134,7 @@ void load_firmware(void) {
     int read = 0;
     uint32_t rcv = 0;
 
+    uint32_t data_index = 0;
     uint32_t page_addr = FW_BASE;
     uint32_t version = 0;
     uint32_t size = 0;
