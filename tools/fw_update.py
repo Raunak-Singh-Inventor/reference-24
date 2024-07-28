@@ -29,8 +29,8 @@ import serial
 
 from util import *
 
-ser = serial.Serial("/dev/ttyACM0", 115200)
-# ser = serial.Serial("/dev/tty.usbmodem0E238EE21", 115200)
+# ser = serial.Serial("/dev/ttyACM0", 115200)
+ser = serial.Serial("/dev/tty.usbmodem0E238EE21", 115200)
 
 RESP_OK = b"\x00"
 FRAME_SIZE = 256+16
@@ -101,7 +101,7 @@ def update(ser, infile, debug):
 
     # Send a zero length payload to tell the bootlader to finish writing it's page.
     ser.write(p16(0x0000, endian='big'))
-    resp = ser.read(1)  # Wait for an OK from the bootloader
+    resp = ser.read(1) 
     if resp != RESP_OK:
         raise RuntimeError("ERROR: Bootloader responded to zero length frame with {}".format(repr(resp)))
     print(f"Wrote zero length frame (2 bytes)")

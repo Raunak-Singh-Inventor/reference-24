@@ -19,23 +19,27 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
+    # Pad firmware and message
     firmware_and_message += b"\00"*(1024-(len(firmware_and_message)%1024))
 
-    # Pack version and size into two little-endian shorts
+    # Pack version and size
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')  
 
+    # Initialize the firmware blob
     firmware_blob = metadata
 
+    # Read the key & nonce
     build_output = open("secret_build_output.txt", "r")
     key = bytes.fromhex(build_output.readline())[:16]
     nonce = bytes.fromhex(build_output.readline())[:12]
     build_output.close()
 
+    # Encrypt firmware and message
     i = 0
     while(i<len(firmware_and_message)):
-        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce) # initialize AES cipher object
-        cipher.update(metadata) # add the additional associated data to the cipher
-        ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i+256]) # encrypt the plaintext firmware
+        cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+        cipher.update(metadata)
+        ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i+256])
         nonce = int.to_bytes(int.from_bytes(nonce, byteorder="little")+1, byteorder="little", length=12)
         firmware_blob += tag + ciphertext
         i+=256

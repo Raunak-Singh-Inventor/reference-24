@@ -57,31 +57,6 @@ uint8_t * fw_release_message_address;
 // Firmware Buffer
 unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 
-// Delay to allow time to connect GDB
-// green LED as visual indicator of when this function is running
-void debug_delay_led() {
-
-    // Enable the GPIO port that is used for the on-board LED.
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
-    // Check if the peripheral access is enabled.
-    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF)) {
-    }
-
-    // Enable the GPIO pin for the LED (PF3).  Set the direction as output, and
-    // enable the GPIO pin for digital function.
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
-
-    // Turn on the green LED
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
-
-    // Wait
-    SysCtlDelay(SysCtlClockGet() * 2);
-
-    // Turn off the green LED
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
-}
-
 void disableDebugging(void){
     // Write the unlock value to the flash memory protection registers
     HWREG(FLASH_FMPRE0) = 0xFFFFFFFF;
@@ -94,18 +69,6 @@ void disableDebugging(void){
 
 int main(void) {
     disableDebugging();
-    // setFlashProtection(FW_BASE, 0x7800, FlashReadWrite);
-
-    // Enable the GPIO port that is used for the on-board LED.
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
-    // Check if the peripheral access is enabled.
-    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF)) {
-    }
-
-    // Enable the GPIO pin for the LED (PF3).  Set the direction as output, and
-    // enable the GPIO pin for digital function.
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
@@ -113,6 +76,7 @@ int main(void) {
     while (!SysCtlPeripheralReady(SYSCTL_PERIPH_EEPROM0)) {
     }
 
+    // Write Key & Nonce to EEPROM
     EEPROMInit();
 
     EEPROMMassErase();
@@ -231,7 +195,7 @@ void load_firmware(void) {
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length += (int)rcv;
 
-        total_frame_amt +=frame_length;
+        total_frame_amt += frame_length;
 
         if(total_frame_amt > 31744){
             break;
@@ -243,7 +207,7 @@ void load_firmware(void) {
             data_index++;
         } // for
 
-        // If we filed our page buffer, program it
+        // If we filled our page buffer, program it
         if (data_index == FLASH_PAGESIZE+64 || frame_length == 0) {
             if(frame_length==0) {
                 uart_write(UART0, OK);
@@ -258,21 +222,25 @@ void load_firmware(void) {
                     ct[j] = tag_and_data[i*(256+16)+j+16];
                 }
 
+                // Read Key & Nonce from EEPROM and Decrypt
                 byte EEPROM_AES_KEY[16];
                 byte EEPROM_AES_NONCE[12];
                 EEPROMRead(EEPROM_AES_KEY, 0x0, 16);
                 EEPROMRead(EEPROM_AES_NONCE, 0x0 + 16, 12);
-                Aes dec; // AES decryption object
-                int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID); // initialize AES algorithm
-                int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, sizeof(EEPROM_AES_KEY)); // set key for AES-GCM
-                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), EEPROM_AES_NONCE, sizeof(EEPROM_AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); // decrypt the encrypted firmware
-                wc_AesFree(&dec); // free the AES object ("remove" it from memory)
-                // increment nonce
+
+                Aes dec;
+                int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
+                int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, sizeof(EEPROM_AES_KEY));
+                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), EEPROM_AES_NONCE, sizeof(EEPROM_AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); 
+                wc_AesFree(&dec);
+
+                // Increment nonce
                 for(int i = 0; i < 12; i++) {
                     if(++EEPROM_AES_NONCE[i]!=0) {
                         break;
                     }
                 }
+
                 EEPROMProgram(EEPROM_AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(EEPROM_AES_NONCE));
                 for(int i = 0; i < sizeof(AES_KEY); i++) {
                     EEPROM_AES_KEY[i] = 255;
@@ -281,6 +249,7 @@ void load_firmware(void) {
                     EEPROM_AES_NONCE[i] = 255;
                 }
 
+                // break if not decrypt properly
                 if(res1!=0 || res2!=0 || res3!=0) {
                     delay_ms(4900);
                     flag = true;
@@ -300,6 +269,7 @@ void load_firmware(void) {
                 return;
             }
 
+            // set firmware permissions in flash
             if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
                 FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly);
             }

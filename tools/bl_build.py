@@ -43,15 +43,15 @@ def make_bootloader() -> bool:
     key = get_random_bytes(16) # generate 16-byte long key
     nonce = b'\x00'*12
 
+    # write keys & nonce to secret_build_output.txt
     build_output = open("secret_build_output.txt", "w")
     write_bytes_to_build_output(key, build_output=build_output)
     write_bytes_to_build_output(nonce, build_output=build_output)
     build_output.close()
 
-    # Build the bootloader from source.
-    os.chdir(BOOTLOADER_DIR)
+    os.chdir(BOOTLOADER_DIR) # change to bootloader directory
 
-    # write secrets (Key and Nonce have to be secret, but Tag and AAD can be sent with firmware in plaintext)
+    # write keys & nonce to inc/secrets.h
     secrets = open("inc/secrets.h", "w") 
     secrets.write("#ifndef SECRETS_H\n");
     secrets.write("#define SECRETS_H\n");
@@ -60,12 +60,14 @@ def make_bootloader() -> bool:
     secrets.write("#endif")
     secrets.close()
 
+    # build the bootloader
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")
 
+    # remove secrets.h after build
     os.remove("inc/secrets.h")
 
-    # Return True if make returned 0, otherwise return False.
+    # return the status of whether make worked
     return status == 0
 
 
