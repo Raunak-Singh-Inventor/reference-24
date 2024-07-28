@@ -48,7 +48,7 @@ def make_bootloader() -> bool:
         f.write(data)
     
     # Write public key to secrets.h
-    with open('./src/secrets.h', 'w') as f:
+    with open('./inc/secrets.h', 'w') as f:
         f.write("#ifndef SECRETS_H\n")
         f.write("#define SECRETS_H\n")
         f.write("const uint8_t publicKey[" + str(RSA_LENGTH) + "] = " + arrayize(pubKey) + ";\n")
