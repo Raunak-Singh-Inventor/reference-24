@@ -36,11 +36,11 @@ def make_bootloader() -> bool:
     pwd = get_random_bytes(16)
 
     # Write private key to secret_build_output.txt
-    with open('secret_build_output.txt', 'wb+') as f:
+    with open('../tools/secret_build_output.txt', 'wb+') as f:
         f.write(pwd + b'\n')
 
     # Export private key securely to privatekey.pem
-    with open("privatekey.pem", "wb") as f:
+    with open("../tools/privatekey.pem", "wb") as f:
         data = rsaKey.export_key(passphrase=pwd,
                                 pkcs=8,
                                 protection='PBKDF2WithHMAC-SHA512AndAES256-CBC',

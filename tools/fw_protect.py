@@ -18,11 +18,11 @@ from Crypto.PublicKey import RSA
 def protect_firmware(infile, outfile, version, message):
 
     # Load secrets
-    with open('../bootloader/secret_build_output.txt', 'rb') as secrets_file:
+    with open('secret_build_output.txt', 'rb') as secrets_file:
         pwd = secrets_file.readline().strip(b'\n')
 
     # Load private key
-    with open("../bootloader/privatekey.pem", "rb") as f:
+    with open("privatekey.pem", "rb") as f:
         data = f.read()
         priv_key = RSA.import_key(data, pwd)
     
@@ -43,7 +43,7 @@ def protect_firmware(infile, outfile, version, message):
     signature = signer.sign(h)
 
     # Delete privatekey.pem
-    os.remove("../bootloader/privatekey.pem")
+    os.remove("privatekey.pem")
     
     # Add together firmware and message along with signature to make the firmware blob
     firmware_blob = metadata + signature + firmware_and_message
