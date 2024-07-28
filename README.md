@@ -35,7 +35,7 @@ Directories marked with * are part of the CrASHBoot system
 
 # Overall Design Flow Chart:
 <img width="1251" alt="image" src="https://github.com/user-attachments/assets/216a9b60-069e-4d97-9889-0078fdb4a8c3">
-Credits: Shubh & Lin
+Credits: Shubh, Stephanie, & Lin
 
 ## Bootloader
 
