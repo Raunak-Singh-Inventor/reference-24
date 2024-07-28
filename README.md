@@ -1,22 +1,8 @@
 # Cryptographic Automotive Software Handler and Bootloader (CrASHBoot)
 
-Installation and development guide for the most secure (TM) automotive bootloader on the planet! We guarentee that cars running our software will be unhackable (provided hacking is not attempted). Of all the automotive bootloaders, this is certainly one of them. Read on and tremble at our embedded security skillz.
+![cover image](https://github.com/user-attachments/assets/dc3bc142-c873-420e-a984-2090c8761457)
 
-### Internal Notes
-
-```
-//TODO: Make the design secure
-//TODO: Hire interns
-//TODO: Delete TODOs before publishing
-```
-
-I find myself trapped in the labyrinthine depths of my company, shackled by an unending torrent of menial tasks. My desk has become my prison, my workload, my jailer. I am buried under a mountain of code, my skills squandered on trivialities while critical applications do not get the attention they deserve. In a desperate attempt to keep up with the workload, I've had to rapidly create a functional, yet insecure, product. It's a risky move, one that fills me with dread. I haven't had the time to implement the necessary security goals of confidentiality, integrity, and authentication. If you are reading this: I implore you, proceed with caution. **Do not release this software.** It is potentially riddled with vulnerabilities and exposed to the most basic types of attacks. 
-
-Please, send help. I need to escape this relentless cycle. I need a team of talented interns to tackle this challenge. Otherwise, I fear the worst.
-
-### External Notes
-
-Ship it!
+Welcome to the Car Bootloader and Software that will transform the automotive industry to years to come. Equipped with features and security, it is set to go to market... as long as some testing is conducted.
 
 # Project Structure
 ```
@@ -47,6 +33,10 @@ Ship it!
 Directories marked with * are part of the CrASHBoot system
 ```
 
+# Overall Design Flow Chart:
+<img width="1251" alt="image" src="https://github.com/user-attachments/assets/216a9b60-069e-4d97-9889-0078fdb4a8c3">
+Credits: Shubh & Lin
+
 ## Bootloader
 
 The `bootloader` directory contains source code that is compiled and loaded onto the TM4C microcontroller. The bootloader manages which firmware can be updated to the TM4C. When connected to the fw_update tool, the bootloader checks the version of the new firmware against the internal firmware version before accepting the new firmware.
@@ -63,7 +53,9 @@ There are three python scripts in the `tools` directory which are used to:
 
 ### bl_build.py
 
-This script calls `make` in the `bootloader` directory.
+This script:
+1.
+calls `make` in the `bootloader` directory.
 
 ### fw_protect.py
 
@@ -154,5 +146,5 @@ list main
 break bootloader.c:50
 ```
 
-Copyright 2024 The MITRE Corporation. ALL RIGHTS RESERVED <br>
-Approved for public release. Distribution unlimited 23-02181-25.
+©2024 TEAM SUPER AUTO PETS. ALL RIGHTS RESERVED. <br> 
+APPROVED FOR PUBLIC RELEASE. DISTRIBUTION UNLIMITED 24-01337-1
