@@ -58,6 +58,9 @@ uint8_t * fw_release_message_address;
 unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 
 void disableDebugging(void){
+    // Permanently Disable JTAG Debugging
+    HWREG(FLASH_BOOTCFG_DBG1) = 0x00000000;
+
     // Write the unlock value to the flash memory protection registers
     HWREG(FLASH_FMPRE0) = 0xFFFFFFFF;
     HWREG(FLASH_FMPPE0) = 0xFFFFFFFF;
