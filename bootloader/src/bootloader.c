@@ -201,6 +201,7 @@ int load_firmware(void) {
     }
 
     int total_frame_amt = 0;
+    int frame_ctr = 0;
 
     /* Loop here until you can get all your characters and stuff */
     while (1) {
@@ -212,6 +213,7 @@ int load_firmware(void) {
         frame_length += (int)rcv;
 
         total_frame_amt +=frame_length;
+        frame_ctr++;
 
         if(total_frame_amt > 31744){
             break;
@@ -313,7 +315,7 @@ int load_firmware(void) {
         uart_write(UART0, OK);
     }
 
-    for(int i = 0; i < total_frame_amt; i += FLASH_PAGESIZE) {
+    for(int i = 0; i < frame_ctr; i++) {
         // Try to write flash and check for error
         if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
