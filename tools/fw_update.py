@@ -119,6 +119,11 @@ def update(ser, infile, debug):
         raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
     print("Verify inline successful.")
 
+    resp = ser.read(1)
+    if resp != RESP_OK:
+        raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
+    print("Comparing hashes successful.")
+
     # Check if hash length comparison was successful
     # resp = ser.read(1)
     # if resp != RESP_OK:

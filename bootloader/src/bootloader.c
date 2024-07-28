@@ -187,7 +187,7 @@ int load_firmware(void) {
     signature_size = (int)rcv << 8;
     rcv = uart_read(UART0, BLOCKING, &read);
     signature_size += (int)rcv;
-    unsigned char signature[signature_size * 2 + MAX_ENC_ALG_SZ];
+    unsigned char signature[signature_size * 2];
     for (int i = 0; i < signature_size; ++i) {
             signature[i] = uart_read(UART0, BLOCKING, &read);
     } // for
@@ -262,6 +262,7 @@ int load_firmware(void) {
         return 1;
     }
 
+    /*
     // Encode hash with algorithm information as per PKCS#1.5
     unsigned char enc_hash[WC_SHA256_DIGEST_SIZE + MAX_ENC_ALG_SZ];
     word32 enc_len = wc_EncodeSignature(enc_hash, hash, sizeof(hash), SHA256h);
@@ -270,6 +271,7 @@ int load_firmware(void) {
         SysCtlReset();
         return 1;
     }
+    */
 
     // Initialize RSA key and decode public key
     RsaKey rsa;
@@ -299,6 +301,7 @@ int load_firmware(void) {
         uart_write(UART0, OK);
     }
 
+    /*
     // Compare the two hashes
     if (enc_len != dec_len) {
         uart_write(UART0, ERROR);
@@ -307,8 +310,9 @@ int load_firmware(void) {
     } else {
         uart_write(UART0, OK);
     }
+    */
 
-    if (memcmp(enc_hash, signed_hash, enc_len) != 0) {
+    if (memcmp(hash, signed_hash, dec_len) != 0) {
         uart_write(UART0, ERROR); // Reject the firmware
         SysCtlReset();            // Reset device
         return 1;
