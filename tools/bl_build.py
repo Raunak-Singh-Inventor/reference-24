@@ -41,7 +41,7 @@ def write_bytes_to_build_output(variable, build_output):
 
 def make_bootloader() -> bool:
     key = get_random_bytes(16) # generate 16-byte long key
-    nonce = b'\x00'*12
+    nonce = b'\x00'*8 + get_random_bytes(4)
 
     # write keys & nonce to secret_build_output.txt
     build_output = open("secret_build_output.txt", "w")
