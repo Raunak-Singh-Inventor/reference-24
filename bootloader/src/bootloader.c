@@ -54,12 +54,23 @@ uint16_t * fw_version_address = (uint16_t *)METADATA_BASE;
 uint16_t * fw_size_address = (uint16_t *)(METADATA_BASE + 2);
 uint8_t * fw_release_message_address;
 
+// Macro to unlock BOOTCFG register
+
+
 // Firmware Buffer
 unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 
 void disableDebugging(void){
-    // Permanently Disable JTAG Debugging
-    HWREG(FLASH_BOOTCFG_DBG1) = 0x00000000;
+    if(HWREG(FLASH_FMD) & FLASH_BOOTCFG_NW) {
+        uint32_t bootCfgValue = HWREG(FLASH_FMD);
+        bootCfgValue &= ~FLASH_BOOTCFG_DBG1;
+        bootCfgValue &= ~FLASH_BOOTCFG_NW;
+        HWREG(FLASH_FMD) = bootCfgValue;
+        HWREG(FLASH_FMA) = 0x75100000;
+        HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
+        while (!(HWREG(FLASH_FMC) & FLASH_FMC_COMT)) {}
+        SysCtlReset();
+    }
 
     // Write the unlock value to the flash memory protection registers
     HWREG(FLASH_FMPRE0) = 0xFFFFFFFF;
