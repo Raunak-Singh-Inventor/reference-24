@@ -91,14 +91,6 @@ void disableDebugging(void){
     HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
 }
 
-// void setFlashProtection(uint32_t addr, uint32_t len, tFlashProtection perm) {
-//     uint32_t addr1 = addr;
-//     while(addr1 < addr + len) {
-//         FlashProtectSet(addr1, perm);
-//         addr1 += 2*FLASH_PAGESIZE;
-//     }
-// }
-
 int main(void) {
     disableDebugging();
     // setFlashProtection(FW_BASE, 0x7800, FlashReadWrite);
