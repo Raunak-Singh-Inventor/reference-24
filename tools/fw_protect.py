@@ -9,14 +9,13 @@ Firmware Bundle-and-Protect Tool
 """
 import os
 import argparse
-from pwn import *
-from Crypto.Signature import pkcs1_15, pss
+from pwn import p16
+from Crypto.Signature import DSS
 from Crypto.Hash import SHA256
-from Crypto.PublicKey import RSA
+from Crypto.PublicKey import ECC
 
 
 def protect_firmware(infile, outfile, version, message):
-
     # Load secrets
     with open('../bootloader/secret_build_output.txt', 'rb') as secrets_file:
         pwd = secrets_file.readline().strip(b'\n')
@@ -24,8 +23,8 @@ def protect_firmware(infile, outfile, version, message):
     # Load private key
     with open("../bootloader/privatekey.pem", "rb") as f:
         data = f.read()
-        priv_key = RSA.import_key(data, pwd)
-    
+        priv_key = ECC.import_key(data, pwd)
+
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
         firmware = fp.read()
@@ -36,21 +35,21 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
-    # Create RSA signature
-    h = SHA256.new()
-    h.update(firmware_and_message)
-    signer = pkcs1_15.new(priv_key)
+    # Create ECDSA signature
+    h = SHA256.new(firmware_and_message)
+    signer = DSS.new(priv_key, 'fips-186-3')
     signature = signer.sign(h)
 
     # Delete privatekey.pem
     os.remove("../bootloader/privatekey.pem")
-    
+
     # Add together firmware and message along with signature to make the firmware blob
     firmware_blob = metadata + signature + firmware_and_message
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
         outfile.write(firmware_blob)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Firmware Update Tool")

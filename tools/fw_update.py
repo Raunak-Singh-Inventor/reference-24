@@ -23,20 +23,19 @@ just a zero
 """
 
 import argparse
-from pwn import *
+from pwn import p16, u16
 import time
 import serial
+from util import print_hex
 
-from util import *
 
 ser = serial.Serial("/dev/ttyACM0", 115200)
-
 RESP_OK = b"\x00"
 FRAME_SIZE = 256
 
 
 def send_metadata(ser, metadata, debug=False):
-    assert(len(metadata) == 4)
+    assert len(metadata) == 4
     version = u16(metadata[:2], endian='little')
     size = u16(metadata[2:], endian='little')
     print(f"Version: {version}\nSize: {size} bytes\n")
@@ -84,8 +83,8 @@ def update(ser, infile, debug):
         firmware_blob = fp.read()
 
     metadata = firmware_blob[:4]
-    signature = firmware_blob[4:260]
-    firmware = firmware_blob[260:]
+    signature = firmware_blob[4:36]
+    firmware = firmware_blob[36:]
 
     send_metadata(ser, metadata, debug=debug)
 
@@ -103,7 +102,6 @@ def update(ser, infile, debug):
         send_frame(ser, frame, debug=debug)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
 
-   
     print("Done writing firmware.")
 
     # Send a zero length payload to tell the bootlader to finish writing it's page.
@@ -111,7 +109,7 @@ def update(ser, infile, debug):
     resp = ser.read(1)  # Wait for an OK from the bootloader
     if resp != RESP_OK:
         raise RuntimeError("ERROR: Bootloader responded to zero length frame with {}".format(repr(resp)))
-    print(f"Wrote zero length frame (2 bytes)")
+    print("Wrote zero length frame (2 bytes)")
 
     # Check if RsaSSL_VerifyInline was successful
     resp = ser.read(1)
