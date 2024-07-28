@@ -287,6 +287,7 @@ int load_firmware(void) {
     }
 
     // Verify the signature
+    
     size_t SIGN_SIZE = 256;
     unsigned char *signed_hash = signature + SIGN_SIZE;
     word32 dec_len = wc_RsaSSL_VerifyInline(signature, SIGN_SIZE, &signed_hash, &rsa); //fix addressing here
@@ -314,6 +315,8 @@ int load_firmware(void) {
     } else {
         uart_write(UART0, OK);
     }
+    
+    page_addr = FW_TMP;
 
     for(int i = 0; i < frame_ctr; i++) {
         // Try to write flash and check for error
