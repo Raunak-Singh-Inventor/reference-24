@@ -70,7 +70,7 @@ def make_bootloader() -> bool:
 
     # Export private key securely to privatekey.pem
     with open("../tools/privatekey.pem", "wb") as f:
-        data = rsaKey.export_key(passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
+        data = rsaKey.export_key(format = "PEM", passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
         f.write(data)
 
     # write keys & nonce to inc/secrets.h
