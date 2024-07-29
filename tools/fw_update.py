@@ -85,8 +85,8 @@ def update(ser, infile, debug):
         firmware_blob = fp.read()
 
     metadata = firmware_blob[:4]
-    signature = firmware_blob[4:260]
-    firmware = firmware_blob[260:]
+    signature = firmware_blob[4:276]
+    firmware = firmware_blob[276:]
 
     send_metadata(ser, metadata, debug=debug)
 
@@ -102,7 +102,6 @@ def update(ser, infile, debug):
         frame = p16(len(data), endian='big') + data
         send_frame(ser, frame, debug=debug, idx=idx)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
-
    
     print("Done writing firmware.")
 
