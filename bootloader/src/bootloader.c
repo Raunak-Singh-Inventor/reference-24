@@ -27,9 +27,6 @@
 #include "wolfssl/wolfcrypt/asn.h"
 #include "wolfssl/wolfcrypt/sha.h"
 #include "wolfssl/wolfcrypt/rsa.h"
-
-#include "secrets.h"
-
 #include <stdint.h>
 
 // Forward Declarations
