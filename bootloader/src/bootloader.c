@@ -199,20 +199,20 @@ int load_firmware(void) {
     signature_size = (int) rcv << 8;
     rcv = uart_read(UART0, BLOCKING, &read);
     signature_size += (int) rcv;
-    unsigned char signature_ct[signature_size];
+    unsigned char signature_frame[signature_size];
     for (int i = 0; i < signature_size; ++i) {
-        signature_ct[i] = uart_read(UART0, BLOCKING, &read);
+        signature_frame[i] = uart_read(UART0, BLOCKING, &read);
     } // for
 
-    unsigned char tag[16];
-    unsigned char ct[256];
+    unsigned char signature_tag[16];
+    unsigned char signature_ct[256];
     unsigned char signature[(signature_size - 16) * 2];
 
     for(i = 0; i < 16; i++) {
-        tag[i] = signature_ct[i];
+        signature_tag[i] = signature_frame[i];
     }
     for(i = 0; i < 256; i++) {
-        ct[j] = signature_ct[16 + i];
+        signature_ct[j] = signature_frame[16 + i];
     }
 
     // Read Key & Nonce from EEPROM and Decrypt
@@ -224,7 +224,7 @@ int load_firmware(void) {
     Aes dec;
     int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
     int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
-    int res3 = wc_AesGcmDecrypt(&dec, signature, ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); 
+    int res3 = wc_AesGcmDecrypt(&dec, signature, signature_ct, 256, EEPROM_AES_NONCE, 12, signature_tag, 16, aad, 4); 
     wc_AesFree(&dec);
 
     for(int i = 0; i < 16; i++) {
