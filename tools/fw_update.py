@@ -23,21 +23,21 @@ just a zero
 """
 
 import argparse
-from pwn import *
+from pwn import p16, u16
 import time
 import serial
 
-from util import *
+from util import print_hex
 
 # ser = serial.Serial("/dev/ttyACM0", 115200)
 ser = serial.Serial("/dev/tty.usbmodem0E238EE21", 115200)
 
 RESP_OK = b"\x00"
-FRAME_SIZE = 256+16
+FRAME_SIZE = 256 + 16
 
 
 def send_metadata(ser, metadata, debug=False):
-    assert(len(metadata) == 4)
+    assert len(metadata) == 4
     version = u16(metadata[:2], endian='little')
     size = u16(metadata[2:4], endian='little')
     print(f"Version: {version}\nSize: {size} bytes\n")
@@ -90,7 +90,7 @@ def update(ser, infile, debug):
     send_metadata(ser, metadata, debug=debug)
 
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
-        data = firmware[frame_start : min(frame_start + FRAME_SIZE, len(firmware))]
+        data = firmware[frame_start:min(frame_start + FRAME_SIZE, len(firmware))]
 
         # Construct frame.
         frame = p16(len(data), endian='big') + data
@@ -101,11 +101,10 @@ def update(ser, infile, debug):
 
     # Send a zero length payload to tell the bootlader to finish writing it's page.
     ser.write(p16(0x0000, endian='big'))
-    resp = ser.read(1) 
+    resp = ser.read(1)
     if resp != RESP_OK:
         raise RuntimeError("ERROR: Bootloader responded to zero length frame with {}".format(repr(resp)))
-    print(f"Wrote zero length frame (2 bytes)")
-
+    print("Wrote zero length frame (2 bytes)")
     return ser
 
 

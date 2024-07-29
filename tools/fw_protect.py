@@ -8,8 +8,9 @@ Firmware Bundle-and-Protect Tool
 
 """
 import argparse
-from pwn import *
+from pwn import p16
 from Crypto.Cipher import AES
+
 
 def protect_firmware(infile, outfile, version, message):
     # Load firmware binary from infile
@@ -20,10 +21,10 @@ def protect_firmware(infile, outfile, version, message):
     firmware_and_message = firmware + message.encode() + b"\00"
 
     # Pad firmware and message
-    firmware_and_message += b"\00"*(1024-(len(firmware_and_message)%1024))
+    firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
 
     # Pack version and size
-    metadata = p16(version, endian='little') + p16(len(firmware), endian='little')  
+    metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
 
     # Initialize the firmware blob
     firmware_blob = metadata
@@ -36,13 +37,13 @@ def protect_firmware(infile, outfile, version, message):
 
     # Encrypt firmware and message
     i = 0
-    while(i<len(firmware_and_message)):
+    while i < len(firmware_and_message):
         cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
         cipher.update(metadata)
-        ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i+256])
-        nonce = int.to_bytes(int.from_bytes(nonce, byteorder="little")+1, byteorder="little", length=12)
+        ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i + 256])
+        nonce = int.to_bytes(int.from_bytes(nonce, byteorder="little") + 1, byteorder="little", length=12)
         firmware_blob += tag + ciphertext
-        i+=256
+        i += 256
 
     # Write firmware blob to outfile
     with open(outfile, "wb+") as outfile:

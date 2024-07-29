@@ -17,10 +17,11 @@ from Crypto.Random import get_random_bytes
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 
+
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
-    if variable_name!="AES_KEY" and variable_name!="AES_NONCE":
+    if variable_name != "AES_KEY" and variable_name != "AES_NONCE":
         return
-    
+
     vals = [f'{k:02X}' for k in variable]
     if isConst:
         secrets.write("const ")
@@ -31,17 +32,18 @@ def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
         secrets.write("0x" + vals[i])
     secrets.write("};\n")
 
+
 def write_bytes_to_build_output(variable, build_output):
     vals = [f'{k:02X}' for k in variable]
     for i in range(0, len(variable)):
         build_output.write(vals[i])
         build_output.write(" ")
     build_output.write("\n")
-        
+
 
 def make_bootloader() -> bool:
-    key = get_random_bytes(16) # generate 16-byte long key
-    nonce = b'\x00'*8 + get_random_bytes(4)
+    key = get_random_bytes(16)  # generate 16-byte long key
+    nonce = b'\x00' * 8 + get_random_bytes(4)
 
     # write keys & nonce to secret_build_output.txt
     build_output = open("secret_build_output.txt", "w")
@@ -49,12 +51,12 @@ def make_bootloader() -> bool:
     write_bytes_to_build_output(nonce, build_output=build_output)
     build_output.close()
 
-    os.chdir(BOOTLOADER_DIR) # change to bootloader directory
+    os.chdir(BOOTLOADER_DIR)  # change to bootloader directory
 
     # write keys & nonce to inc/secrets.h
-    secrets = open("inc/secrets.h", "w") 
-    secrets.write("#ifndef SECRETS_H\n");
-    secrets.write("#define SECRETS_H\n");
+    secrets = open("inc/secrets.h", "w")
+    secrets.write("#ifndef SECRETS_H\n")
+    secrets.write("#define SECRETS_H\n")
     write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
     secrets.write("#endif")
