@@ -24,7 +24,7 @@ def arrayize(binary_string):
     return '{' + ','.join([hex(char) for char in binary_string]) + '}'
 
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
-    if variable_name != "AES_KEY" and variable_name != "AES_NONCE":
+    if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "publicKey":
         return
 
     vals = [f'{k:02X}' for k in variable]
