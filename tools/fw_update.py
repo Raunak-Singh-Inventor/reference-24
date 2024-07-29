@@ -113,29 +113,6 @@ def update(ser, infile, debug):
         raise RuntimeError("ERROR: Bootloader responded to zero length frame with {}".format(repr(resp)))
     print(f"Wrote zero length frame (2 bytes)")
 
-    # Check if RsaSSL_VerifyInline was successful
-    resp = ser.read(1)
-    if resp != RESP_OK:
-        raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
-    print("Verify inline successful.")
-
-    resp = ser.read(1)
-    if resp != RESP_OK:
-        raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
-    print("Comparing hashes successful.")
-
-    # Check if hash length comparison was successful
-    # resp = ser.read(1)
-    # if resp != RESP_OK:
-    #     raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
-    # print("Hash length comparison successful.")
-
-    # Check if hash comparison was successful
-    # resp = ser.read(1)
-    # if resp != RESP_OK:
-    #     raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
-    # print("Hash comparison successful.")
-
     return ser
 
 

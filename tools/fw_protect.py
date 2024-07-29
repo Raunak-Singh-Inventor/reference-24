@@ -36,10 +36,9 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
-    # Create RSA signature
     h = SHA256.new()
     h.update(firmware_and_message)
-    signer = pkcs1_15.new(priv_key)
+    signer = pss.new(priv_key)
     signature = signer.sign(h)
 
     # Delete privatekey.pem

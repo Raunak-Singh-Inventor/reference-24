@@ -256,22 +256,12 @@ int load_firmware(void) {
     } // while(1)
 
             
+    // Finalize Sha256 Final
     if (wc_Sha256Final(&sha, hash) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
         return 1;
     }
-
-    /*
-    // Encode hash with algorithm information as per PKCS#1.5
-    unsigned char enc_hash[WC_SHA256_DIGEST_SIZE + MAX_ENC_ALG_SZ];
-    word32 enc_len = wc_EncodeSignature(enc_hash, hash, sizeof(hash), SHA256h);
-    if ((int) enc_len < 0) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
-    }
-    */
 
     // Initialize RSA key and decode public key
     RsaKey rsa;
@@ -282,6 +272,7 @@ int load_firmware(void) {
         return 1;
     }
             
+    // Decode RSA Public Key
     if (wc_RsaPublicKeyDecode(publicKey, &idx, &rsa, sizeof(publicKey)) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
@@ -289,50 +280,20 @@ int load_firmware(void) {
     }
 
     // Verify the signature
-
-    
     size_t SIGN_SIZE = 256;
     unsigned char *signed_hash;
-    int dec_len = wc_RsaSSL_VerifyInline(signature, SIGN_SIZE, &signed_hash, &rsa); //fix addressing here
+    int dec_len = wc_RsaPSS_VerifyInline(signature, SIGN_SIZE, &signed_hash, WC_HASH_TYPE_SHA256, WC_MGF1SHA256, &rsa); //fix addressing here
     if (dec_len < 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
         return 1;
-    } else {
-        uart_write(UART0, OK);
     }
     
-
-    /*
-    size_t SIGN_SIZE = 256;
-    unsigned char signed_hash[SIGN_SIZE];
-    word32 dec_len = wc_RsaSSL_Verify(signature, SIGN_SIZE, signed_hash, SIGN_SIZE, &rsa); //fix addressing here
-    if ((int) dec_len < 0) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
-    } else {
-        uart_write(UART0, OK);
-    }
-    */
-
-    /*
-    // Compare the two hashes
-    if (enc_len != dec_len) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
-    } else {
-        uart_write(UART0, OK);
-    }
-    */
-
-    if (memcmp(hash, signed_hash, dec_len) != 0) {
+    // Check the hashes of the signature
+    if (wc_RsaPSS_CheckPadding(hash, MAX_ENC_ALG_SZ, signed_hash, dec_len, WC_HASH_TYPE_SHA256) != 0){
         uart_write(UART0, ERROR); // Reject the firmware
         SysCtlReset();            // Reset device
         return 1;
-    } else {
-        uart_write(UART0, OK);
     }
     
     page_addr = FW_TMP;
