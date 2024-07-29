@@ -37,8 +37,8 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 
 // Firmware Constants
 #define METADATA_BASE 0xFC00 // base address of version and firmware size in Flash
-#define FW_BASE 0x10000      // base address of firmware in Flash
-#define FW_TMP 0x20000       // temporary address of firmware in Flash without checking
+#define FW_BASE 0x20000      // base address of firmware in Flash
+#define FW_TMP 0x10000       // temporary address of firmware in Flash without checking
 
 // FLASH Constants
 #define FLASH_PAGESIZE 1024
@@ -65,7 +65,7 @@ void disableDebugging(void){
 }
 
 int main(void) {
-    disableDebugging();
+    // disableDebugging();
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
@@ -284,7 +284,7 @@ void load_firmware(void) {
         // Try to write flash and check for error
         if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
-            return 1;
+            return;
         }
 
         // set firmware permissions in flash
@@ -366,7 +366,7 @@ void boot_firmware(void) {
     uart_write_str(UART0, (char *)fw_release_message_address);
 
     // Boot the firmware
-    __asm("LDR R0,=0x10001\n\t"
+    __asm("LDR R0,=0x20001\n\t"
           "BX R0\n\t");
 }
 
