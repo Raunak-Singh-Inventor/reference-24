@@ -38,6 +38,7 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 // Firmware Constants
 #define METADATA_BASE 0xFC00 // base address of version and firmware size in Flash
 #define FW_BASE 0x10000      // base address of firmware in Flash
+#define FW_TMP 0x20000       // temporary address of firmware in Flash without checking
 
 // FLASH Constants
 #define FLASH_PAGESIZE 1024
@@ -130,7 +131,8 @@ void load_firmware(void) {
     uint32_t rcv = 0;
 
     uint32_t data_index = 0;
-    uint32_t page_addr = FW_BASE;
+    uint32_t page_addr = FW_TMP;
+    uint32_t page_addr2 = FW_BASE;
     uint32_t version = 0;
     uint32_t size = 0;
 
@@ -161,7 +163,7 @@ void load_firmware(void) {
 
     if (version != 0 && version < old_version) {
         delay_ms(4900);
-        uart_write(UART0, ERROR); // Reject the metadata.
+        uart_write(UART0, OK); // Reject the metadata.
         SysCtlReset();            // Reset device
         return;
     } else if (version == 0) {
@@ -182,8 +184,8 @@ void load_firmware(void) {
     /* Loop here until you can get all your characters and stuff */
     int i = 0;
     int j = 0;
-    bool flag = false;
     int total_frame_amt = 0;
+    int frame_ctr = 0;
     while (1) {
         // Get two bytes for the length.
         rcv = uart_read(UART0, BLOCKING, &read);
@@ -192,6 +194,7 @@ void load_firmware(void) {
         frame_length += (int)rcv;
 
         total_frame_amt += frame_length;
+        frame_ctr++;
 
         if(total_frame_amt > 31744){
             break;
@@ -249,26 +252,23 @@ void load_firmware(void) {
                 // break if not decrypt properly
                 if(res1!=0 || res2!=0 || res3!=0) {
                     delay_ms(4900);
-                    flag = true;
-                    break;
+                    uart_write(UART0, OK); // Reject the metadata.
+                    SysCtlReset();            // Reset device
+                    return;
                 }
-            }
-
-            if (flag) {
-                uart_write(UART0, OK);
-                break;
             }
 
              // Try to write flash and check for error
             if (program_flash((uint8_t *) page_addr, pt, FLASH_PAGESIZE)) {
-                uart_write(UART0, ERROR); // Reject the firmware
+                delay_ms(4900);
+                uart_write(UART0, OK); // Reject the metadata.
                 SysCtlReset();            // Reset device
                 return;
             }
 
             // set firmware permissions in flash
             if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
-                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly);
+                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly);
             }
 
             // Update to next page
@@ -278,6 +278,25 @@ void load_firmware(void) {
 
         uart_write(UART0, OK); // Acknowledge the frame.
     } // while(1)
+
+    page_addr = FW_TMP;
+    for(i = 0; i < frame_ctr; i++) {
+        // Try to write flash and check for error
+        if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
+            SysCtlReset();            // Reset device
+            return 1;
+        }
+
+        // set firmware permissions in flash
+        if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
+            FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly);
+            FlashProtectSet(page_addr2-FLASH_PAGESIZE, FlashExecuteOnly);
+        }
+
+        // Update to next page
+        page_addr += FLASH_PAGESIZE;
+        page_addr2 += FLASH_PAGESIZE;
+    }
 }
 
 /*
