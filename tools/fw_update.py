@@ -85,18 +85,25 @@ def update(ser, infile, debug):
         firmware_blob = fp.read()
 
     metadata = firmware_blob[:4]
-    firmware = firmware_blob[4:]
+    signature = firmware_blob[4:260]
+    firmware = firmware_blob[260:]
 
     send_metadata(ser, metadata, debug=debug)
 
+    # Send signature frame
+    frame = p16(len(signature), endian='big') + signature
+    send_frame(ser, frame, debug=debug)
+    print(f"Wrote frame signature ({len(signature) + 2} bytes)")
+
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
-        data = firmware[frame_start:min(frame_start + FRAME_SIZE, len(firmware))]
+        data = firmware[frame_start:frame_start + FRAME_SIZE]
 
         # Construct frame.
         frame = p16(len(data), endian='big') + data
         send_frame(ser, frame, debug=debug, idx=idx)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
 
+   
     print("Done writing firmware.")
 
     # Send a zero length payload to tell the bootlader to finish writing it's page.

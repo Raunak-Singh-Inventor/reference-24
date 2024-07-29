@@ -7,21 +7,35 @@
 Firmware Bundle-and-Protect Tool
 
 """
+import os
 import argparse
 from pwn import p16
 from Crypto.Cipher import AES
+from Crypto.Signature import pkcs1_15, pss
+from Crypto.Hash import SHA256
+from Crypto.PublicKey import RSA
 
 
 def protect_firmware(infile, outfile, version, message):
+
+    # Load secrets
+    with open('secret_build_output.txt', 'rb') as secrets_file:
+        pwd = secrets_file.readline().strip(b'\n')
+
+    # Load private key
+    with open("privatekey.pem", "rb") as f:
+        data = f.read()
+        priv_key = RSA.import_key(data, pwd)
+    
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
         firmware = fp.read()
 
+    # Pack version and size into two little-endian shorts
+    metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
+
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
-
-    # Pad firmware and message
-    firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
 
     # Pack version and size
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
@@ -35,6 +49,22 @@ def protect_firmware(infile, outfile, version, message):
     nonce = bytes.fromhex(build_output.readline())[:12]
     build_output.close()
 
+    h = SHA256.new()
+    h.update(firmware_and_message)
+    signer = pss.new(priv_key)
+    signature = signer.sign(h)
+
+    cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
+    cipher.update(metadata)
+    ciphertext, tag = cipher.encrypt_and_digest(signature)
+    nonce = int.to_bytes(int.from_bytes(nonce, byteorder="little") + 1, byteorder="little", length=12)
+    firmware_blob += tag + ciphertext
+        
+
+    # Pad firmware and message
+    firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
+
+
     # Encrypt firmware and message
     i = 0
     while i < len(firmware_and_message):
@@ -45,10 +75,16 @@ def protect_firmware(infile, outfile, version, message):
         firmware_blob += tag + ciphertext
         i += 256
 
-    # Write firmware blob to outfile
+
+    # Delete privatekey.pem
+    os.remove("privatekey.pem")
+    
+    # Add together firmware and message along with signature to make the firmware blob
+    firmware_blob = metadata + signature + firmware_and_message
+
+    # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
         outfile.write(firmware_blob)
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Firmware Update Tool")

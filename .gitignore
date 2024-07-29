@@ -26,6 +26,10 @@ cscope*
 *.la
 *.lo
 
+# Keys
+*.pem
+secrets.h
+
 # Executables
 *.axf
 *.bin 

@@ -12,11 +12,16 @@ the build outputs into the host tools directory for programming.
 import os
 import pathlib
 import subprocess
+from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
+
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
+RSA_LENGTH = 2048
 
+def arrayize(binary_string):
+    return '{' + ','.join([hex(char) for char in binary_string]) + '}'
 
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     if variable_name != "AES_KEY" and variable_name != "AES_NONCE":
@@ -62,6 +67,32 @@ def make_bootloader() -> bool:
     secrets.write("#endif")
     secrets.close()
 
+    # Create RSA keys
+    rsaKey = RSA.generate(RSA_LENGTH)
+    pubKey = rsaKey.publickey().exportKey(format = 'DER')
+
+    # Create password for RSA key
+    pwd = get_random_bytes(16)
+
+    # Write private key to secret_build_output.txt
+    with open('../tools/secret_build_output.txt', 'wb+') as f:
+        f.write(pwd + b'\n')
+
+    # Export private key securely to privatekey.pem
+    with open("../tools/privatekey.pem", "wb") as f:
+        data = rsaKey.export_key(passphrase=pwd,
+                                pkcs=8,
+                                protection='PBKDF2WithHMAC-SHA512AndAES256-CBC',
+                                prot_params={'iteration_count':131072})
+        f.write(data)
+    
+    # Write public key to secrets.h
+    with open('./inc/secrets.h', 'w') as f:
+        f.write("#ifndef SECRETS_H\n")
+        f.write("#define SECRETS_H\n")
+        f.write("const uint8_t publicKey[" + str(RSA_LENGTH) + "] = " + arrayize(pubKey) + ";\n")
+        f.write("#endif")
+    
     # build the bootloader
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")
@@ -77,3 +108,4 @@ def make_bootloader() -> bool:
 
 if __name__ == "__main__":
     make_bootloader()
+
