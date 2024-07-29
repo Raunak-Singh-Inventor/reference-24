@@ -37,6 +37,13 @@ Directories marked with * are part of the CrASHBoot system
 <img width="1251" alt="image" src="https://github.com/user-attachments/assets/216a9b60-069e-4d97-9889-0078fdb4a8c3">
 Credits: Shubh, Stephanie, & Lin
 
+# AES-GCM
+AES-GCM encrypts firmware frames in (`tools/fw_protect.py`) using a private key and nonce under pycryptodome's implementation, with the version number and firmware size used as Additional Authenticated Data (AAD). (`tools/fw_update.py`) sends these encrypted frames to the bootloader over a serial connection. See below for our frame format.
+
+<img width="762" alt="Screenshot 2024-07-28 at 6 12 47 PM" src="https://github.com/user-attachments/assets/0d35d2ca-5981-4920-b7c0-3336816b1b57">
+
+In (`bootloader/src/bootloader.c`), the received private key and nonce are placed in EEPROM. Metadata (version number and size) are received, and frames are decrypted using the wolfSSL library's implementation of AES_GCM. The decrypted firmware is loaded and booted.
+
 ## Bootloader
 
 The `bootloader` directory contains source code that is compiled and loaded onto the TM4C microcontroller. The bootloader manages which firmware can be updated to the TM4C. When connected to the fw_update tool, the bootloader checks the version of the new firmware against the internal firmware version before accepting the new firmware.
@@ -145,12 +152,6 @@ layout src
 list main
 break bootloader.c:50
 ```
-# AES-GCM
-AES-GCM encrypts firmware frames in (`tools/fw_protect.py`) using a private key and nonce under pycryptodome's implementation, with the version number and firmware size used as Additional Authenticated Data (AAD). (`tools/fw_update.py`) sends these encrypted frames to the bootloader over a serial connection. See below for our frame format.
-
-<img width="762" alt="Screenshot 2024-07-28 at 6 12 47 PM" src="https://github.com/user-attachments/assets/0d35d2ca-5981-4920-b7c0-3336816b1b57">
-
-In (`bootloader/src/bootloader.c`), the received private key and nonce are placed in EEPROM. Metadata (version number and size) are received, and frames are decrypted using the wolfSSL library's implementation of AES_GCM. The decrypted firmware is loaded and booted.
 
 
 ©2024 TEAM SUPER AUTO PETS. ALL RIGHTS RESERVED. <br> 
