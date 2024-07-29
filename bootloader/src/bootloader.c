@@ -86,10 +86,12 @@ int main(void) {
 
     EEPROMProgram(AES_KEY, 0x0, 16);
     EEPROMProgram(AES_NONCE, 0x0 + 16, 12);
+    EEPROMProgram(publicKey, 0x0 + 28, 256);
 
     for(int i = 0; i < 16; i++) {
         AES_KEY[i] = 0;
     }
+    
     for(int i = 0; i < 12; i++) {
         AES_NONCE[i] = 0;
     }
@@ -383,9 +385,11 @@ int load_firmware(void) {
         SysCtlReset();
         return 1;
     }
-            
+
+    byte EEPROM_RSA_PUBLIC_KEY;
+    EEPROMRead(EEPROM_RSA_PUBLIC_KEY, 0x0 + 28, 256);
     // Decode RSA Public Key
-    if (wc_RsaPublicKeyDecode(publicKey, &idx, &rsa, sizeof(publicKey)) != 0) {
+    if (wc_RsaPublicKeyDecode(EEPROM_RSA_PUBLIC_KEY, &idx, &rsa, sizeof(EEPROM_RSA_PUBLIC_KEY)) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
         return 1;
