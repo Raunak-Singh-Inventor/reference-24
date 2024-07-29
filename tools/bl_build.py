@@ -14,6 +14,7 @@ import pathlib
 import subprocess
 from Crypto.PublicKey import ECC
 from Crypto.Random import get_random_bytes
+from Crypto.Signature import eddsa
 
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
@@ -30,8 +31,8 @@ def make_bootloader() -> bool:
     os.chdir(BOOTLOADER_DIR)
 
     # Create ECC keys
-    ecc_key = ECC.generate(curve='p256')
-    pub_key = ecc_key.public_key().export_key(format='SEC1')
+    ecc_key = ECC.generate(curve='Ed25519')
+    pub_key = ecc_key.public_key().export_key(format='raw')
 
     # Create password for ECC key
     pwd = get_random_bytes(16)

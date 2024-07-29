@@ -10,8 +10,7 @@ Firmware Bundle-and-Protect Tool
 import os
 import argparse
 from pwn import p16
-from Crypto.Signature import DSS
-from Crypto.Hash import SHA256
+from Crypto.Signature import eddsa
 from Crypto.PublicKey import ECC
 
 
@@ -35,10 +34,9 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
-    # Create ECDSA signature
-    h = SHA256.new(firmware_and_message)
-    signer = DSS.new(priv_key, 'fips-186-3')
-    signature = signer.sign(h)
+    # Create EdDSA signature
+    signer = eddsa.new(priv_key, 'rfc8032')
+    signature = signer.sign(firmware_and_message)
 
     # Delete privatekey.pem
     os.remove("../bootloader/privatekey.pem")
