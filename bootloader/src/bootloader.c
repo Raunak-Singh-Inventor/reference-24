@@ -73,34 +73,8 @@ void disableDebugging(void){
     HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
 }
 
-
-// Delay to allow time to connect GDB
-// green LED as visual indicator of when this function is running
-void debug_delay_led() {
-
-    // Enable the GPIO port that is used for the on-board LED.
-    SysCtlPeripheralEnable(SYSCTL_PERIPH_GPIOF);
-
-    // Check if the peripheral access is enabled.
-    while (!SysCtlPeripheralReady(SYSCTL_PERIPH_GPIOF)) {
-    }
-
-    // Enable the GPIO pin for the LED (PF3).  Set the direction as output, and
-    // enable the GPIO pin for digital function.
-    GPIOPinTypeGPIOOutput(GPIO_PORTF_BASE, GPIO_PIN_3);
-
-    // Turn on the green LED
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, GPIO_PIN_3);
-
-    // Wait
-    SysCtlDelay(SysCtlClockGet() * 2);
-
-    // Turn off the green LED
-    GPIOPinWrite(GPIO_PORTF_BASE, GPIO_PIN_3, 0x0);
-
-
 int main(void) {
-    // disableDebugging();
+    disableDebugging();
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
@@ -222,13 +196,59 @@ int load_firmware(void) {
     // Get signature
     int signature_size;
     rcv = uart_read(UART0, BLOCKING, &read);
-    signature_size = (int)rcv << 8;
+    signature_size = (int) rcv << 8;
     rcv = uart_read(UART0, BLOCKING, &read);
-    signature_size += (int)rcv;
-    unsigned char signature[signature_size * 2];
+    signature_size += (int) rcv;
+    unsigned char signature_ct[signature_size];
     for (int i = 0; i < signature_size; ++i) {
-            signature[i] = uart_read(UART0, BLOCKING, &read);
+        signature_ct[i] = uart_read(UART0, BLOCKING, &read);
     } // for
+
+    unsigned char tag[16];
+    unsigned char ct[256];
+    unsigned char signature[(signature_size - 16) * 2];
+
+    for(i = 0; i < 16; i++) {
+        tag[i] = signature_ct[i];
+    }
+    for(i = 0; i < 256; i++) {
+        ct[j] = signature_ct[16 + i];
+    }
+
+    // Read Key & Nonce from EEPROM and Decrypt
+    byte EEPROM_AES_KEY[16];
+    byte EEPROM_AES_NONCE[12];
+    EEPROMRead(EEPROM_AES_KEY, 0x0, 16);
+    EEPROMRead(EEPROM_AES_NONCE, 0x0 + 16, 12);
+
+    Aes dec;
+    int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
+    int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
+    int res3 = wc_AesGcmDecrypt(&dec, signature, ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); 
+    wc_AesFree(&dec);
+
+    for(int i = 0; i < 16; i++) {
+        EEPROM_AES_KEY[i] = 0;
+    }
+
+    // Increment nonce
+    for(int i = 0; i < 12; i++) {
+        EEPROM_AES_NONCE[i]++;
+    }
+
+    EEPROMProgram(EEPROM_AES_NONCE, 0x0 + 16, 12);
+    for(int i = 0; i < 12; i++) {
+        EEPROM_AES_NONCE[i] = 0;
+    }
+
+    // break if not decrypt properly
+    if(res1!=0 || res2!=0 || res3!=0) {
+        delay_ms(4900);
+        uart_write(UART0, OK); // Reject the metadata.
+        SysCtlReset();            // Reset device
+        return;
+    }
+    
     uart_write(UART0, OK); // Acknowledge the signature.
     
     // Initialize Sha256 object
@@ -237,31 +257,6 @@ int load_firmware(void) {
         SysCtlReset();
         return 1;
     }
-
-    int total_frame_amt = 0;
-    int frame_ctr = 0;
-
-    // Get signature
-    int signature_size;
-    rcv = uart_read(UART0, BLOCKING, &read);
-    signature_size = (int)rcv << 8;
-    rcv = uart_read(UART0, BLOCKING, &read);
-    signature_size += (int)rcv;
-    unsigned char signature[signature_size * 2];
-    for (int i = 0; i < signature_size; ++i) {
-            signature[i] = uart_read(UART0, BLOCKING, &read);
-    } // for
-    uart_write(UART0, OK); // Acknowledge the signature.
-    
-    // Initialize Sha256 object
-    if (wc_InitSha256(&sha) != 0) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
-    }
-
-    int total_frame_amt = 0;
-    int frame_ctr = 0;
 
     unsigned char tag[16];
     unsigned char ct[256];
@@ -271,6 +266,8 @@ int load_firmware(void) {
     int j = 0;
     int total_frame_amt = 0;
     int frame_ctr = 0;
+
+    
     while (1) {
         // Get two bytes for the length.
         rcv = uart_read(UART0, BLOCKING, &read);
@@ -352,7 +349,7 @@ int load_firmware(void) {
                 return 0;
             }
 
-            if (wc_Sha256Update(&sha, data, data_index) != 0) {
+            if (wc_Sha256Update(&sha, pt, data_index) != 0) {
                 uart_write(UART0, ERROR);
                 SysCtlReset();
                 return 1;
