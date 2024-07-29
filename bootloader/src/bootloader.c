@@ -146,8 +146,6 @@ int load_firmware(void) {
     uint32_t data_index = 0;
     uint32_t page_addr = FW_TMP;
     uint32_t page_addr2 = FW_BASE;
-    uint32_t page_addr = FW_TMP;
-    uint32_t page_addr2 = FW_BASE;
     uint32_t version = 0;
     uint32_t size = 0;
 
@@ -208,11 +206,11 @@ int load_firmware(void) {
     unsigned char signature_ct[256];
     unsigned char signature[(signature_size - 16) * 2];
 
-    for(i = 0; i < 16; i++) {
+    for(int i = 0; i < 16; i++) {
         signature_tag[i] = signature_frame[i];
     }
-    for(i = 0; i < 256; i++) {
-        signature_ct[j] = signature_frame[16 + i];
+    for(int i = 0; i < 256; i++) {
+        signature_ct[i] = signature_frame[16 + i];
     }
 
     // Read Key & Nonce from EEPROM and Decrypt
