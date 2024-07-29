@@ -47,16 +47,31 @@ def write_bytes_to_build_output(variable, build_output):
 
 
 def make_bootloader() -> bool:
-    key = get_random_bytes(16)  # generate 16-byte long key
-    nonce = b'\x00' * 8 + get_random_bytes(4)
 
-    # write keys & nonce to secret_build_output.txt
+    # Generate AES-GCM key and nonce
+    key = get_random_bytes(16)
+    nonce = b'\x00' * 8 + get_random_bytes(4)
+    
+    # Create password for RSA key
+    pwd = get_random_bytes(16)
+
+    # Write keys & nonce to secret_build_output.txt
     build_output = open("secret_build_output.txt", "w")
+    write_bytes_to_build_output(pwd, build_output=build_output)
     write_bytes_to_build_output(key, build_output=build_output)
     write_bytes_to_build_output(nonce, build_output=build_output)
     build_output.close()
 
-    os.chdir(BOOTLOADER_DIR)  # change to bootloader directory
+    os.chdir(BOOTLOADER_DIR)  # Change to bootloader directory
+
+    # Create RSA keys
+    rsaKey = RSA.generate(RSA_LENGTH)
+    pubKey = rsaKey.publickey().exportKey(format = 'DER')
+
+    # Export private key securely to privatekey.pem
+    with open("../tools/privatekey.pem", "wb") as f:
+        data = rsaKey.export_key(passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
+        f.write(data)
 
     # write keys & nonce to inc/secrets.h
     secrets = open("inc/secrets.h", "w")
@@ -64,34 +79,9 @@ def make_bootloader() -> bool:
     secrets.write("#define SECRETS_H\n")
     write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
+    write_bytearr_to_Secrets("publicKey", pubKey, secrets=secrets, isConst=False)
     secrets.write("#endif")
     secrets.close()
-
-    # Create RSA keys
-    rsaKey = RSA.generate(RSA_LENGTH)
-    pubKey = rsaKey.publickey().exportKey(format = 'DER')
-
-    # Create password for RSA key
-    pwd = get_random_bytes(16)
-
-    # Write private key to secret_build_output.txt
-    with open('../tools/secret_build_output.txt', 'wb+') as f:
-        f.write(pwd + b'\n')
-
-    # Export private key securely to privatekey.pem
-    with open("../tools/privatekey.pem", "wb") as f:
-        data = rsaKey.export_key(passphrase=pwd,
-                                pkcs=8,
-                                protection='PBKDF2WithHMAC-SHA512AndAES256-CBC',
-                                prot_params={'iteration_count':131072})
-        f.write(data)
-    
-    # Write public key to secrets.h
-    with open('./inc/secrets.h', 'w') as f:
-        f.write("#ifndef SECRETS_H\n")
-        f.write("#define SECRETS_H\n")
-        f.write("const uint8_t publicKey[" + str(RSA_LENGTH) + "] = " + arrayize(pubKey) + ";\n")
-        f.write("#endif")
     
     # build the bootloader
     subprocess.call("make clean", shell=True)
