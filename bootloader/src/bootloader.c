@@ -77,14 +77,14 @@ int main(void) {
 
     EEPROMMassErase();
 
-    EEPROMProgram(AES_KEY, 0x0, sizeof(AES_KEY));
-    EEPROMProgram(AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(AES_NONCE));
+    EEPROMProgram(AES_KEY, 0x0, 16);
+    EEPROMProgram(AES_NONCE, 0x0 + 16, 12);
 
-    for(int i = 0; i < sizeof(AES_KEY); i++) {
-        AES_KEY[i] = 255;
+    for(int i = 0; i < 16; i++) {
+        AES_KEY[i] = 0;
     }
-    for(int i = 0; i < sizeof(AES_NONCE); i++) {
-        AES_NONCE[i] = 255;
+    for(int i = 0; i < 12; i++) {
+        AES_NONCE[i] = 0;
     }
 
     initialize_uarts(UART0);
@@ -226,9 +226,13 @@ void load_firmware(void) {
 
                 Aes dec;
                 int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
-                int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, sizeof(EEPROM_AES_KEY));
-                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, sizeof(ct), EEPROM_AES_NONCE, sizeof(EEPROM_AES_NONCE), tag, sizeof(tag), aad, sizeof(aad)); 
+                int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
+                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); 
                 wc_AesFree(&dec);
+
+                for(int i = 0; i < 16; i++) {
+                    EEPROM_AES_KEY[i] = 0;
+                }
 
                 // Increment nonce
                 for(int i = 0; i < 12; i++) {
@@ -237,12 +241,9 @@ void load_firmware(void) {
                     }
                 }
 
-                EEPROMProgram(EEPROM_AES_NONCE, 0x0 + sizeof(AES_KEY), sizeof(EEPROM_AES_NONCE));
-                for(int i = 0; i < sizeof(AES_KEY); i++) {
-                    EEPROM_AES_KEY[i] = 255;
-                }
-                for(int i = 0; i < sizeof(AES_NONCE); i++) {
-                    EEPROM_AES_NONCE[i] = 255;
+                EEPROMProgram(EEPROM_AES_NONCE, 0x0 + 16, 12);
+                for(int i = 0; i < 12; i++) {
+                    EEPROM_AES_NONCE[i] = 0;
                 }
 
                 // break if not decrypt properly
