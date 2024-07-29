@@ -66,6 +66,7 @@ def make_bootloader() -> bool:
 
     # remove secrets.h after build
     os.remove("inc/secrets.h")
+    os.remove("bin/bootloader.axf")
 
     # return the status of whether make worked
     return status == 0
