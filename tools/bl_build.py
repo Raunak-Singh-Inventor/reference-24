@@ -30,7 +30,7 @@ def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     vals = [f'{k:02X}' for k in variable]
     if isConst:
         secrets.write("const ")
-    secrets.write("byte " + variable_name + "[" + str(len(variable)) + "] = {")
+    secrets.write("unsigned char " + variable_name + "[" + str(len(variable)) + "] = {")
     secrets.write("0x" + vals[0])
     for i in range(1, len(variable)):
         secrets.write(", ")
