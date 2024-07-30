@@ -44,7 +44,7 @@ def protect_firmware(infile, outfile, version, message):
     firmware_and_message = firmware + message.encode() + b"\00"
 
     # Pad firmware and message
-    firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
+    firmware_and_message += b"\00" * ((1024 - len(firmware_and_message)) % 1024)
 
     h = SHA256.new()
     h.update(firmware_and_message)
