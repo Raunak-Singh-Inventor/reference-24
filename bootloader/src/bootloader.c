@@ -64,16 +64,7 @@ unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 unsigned char hash[WC_SHA256_DIGEST_SIZE];
 Sha256 sha;
 
-// Disables debugging by locking the board
-void disableDebugging(void){
-    HWREG(FLASH_FMA) = 0x75100000;
-    HWREG(FLASH_FMD) = HWREG(FLASH_BOOTCFG) & 0x7FFFFFFC;
-    HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
-}
-
 int main(void) {
-    //disableDebugging();
-
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
     // Check if the peripheral access is enabled.
