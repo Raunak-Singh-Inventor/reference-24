@@ -30,7 +30,7 @@
 #include <stdint.h>
 
 // Forward Declarations
-int load_firmware(void);
+void load_firmware(void);
 void boot_firmware(void);
 void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 
@@ -133,7 +133,7 @@ void delay_ms(uint32_t ui32Ms) {
  /*
  * Load the firmware into flash.
  */
-int load_firmware(void) {
+void load_firmware(void) {
     int frame_length = 0;
     int read = 0;
     uint32_t rcv = 0;
@@ -173,7 +173,7 @@ int load_firmware(void) {
         delay_ms(4900);
         uart_write(UART0, OK); // Reject the metadata.
         SysCtlReset();            // Reset device
-        return 1;
+        return;
     } else if (version == 0) {
         // If debug firmware, don't change version
         version = old_version;
@@ -248,7 +248,7 @@ int load_firmware(void) {
     if (wc_InitSha256(&sha) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
-        return 1;
+        return;
     }
 
     unsigned char tag[16];
@@ -379,27 +379,25 @@ int load_firmware(void) {
         delay_ms(4900);
         uart_write(UART0, OK);
         SysCtlReset();
-        return 0;
+        return;
     }
 
     // Initialize RSA key and decode public key
     RsaKey rsa;
     word32 idx = 0;
     if (wc_InitRsaKey(&rsa, NULL) != 0) {
-        delay_ms(4900);
-        uart_write(UART0, OK);
-        SysCtlReset();          
-        return 0;
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return;
     }
 
     byte EEPROM_RSA_PUBLIC_KEY[256];
     EEPROMRead((uint32_t *) EEPROM_RSA_PUBLIC_KEY, 0x0 + 28, 256);
     // Decode RSA Public Key
     if (wc_RsaPublicKeyDecode(EEPROM_RSA_PUBLIC_KEY, &idx, &rsa, sizeof(EEPROM_RSA_PUBLIC_KEY)) != 0) {
-        delay_ms(4900);
-        uart_write(UART0, OK);
-        SysCtlReset();  
-        return 0;
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return;
     }
 
     // Verify the signature
@@ -407,18 +405,16 @@ int load_firmware(void) {
     unsigned char *signed_hash;
     int dec_len = wc_RsaPSS_VerifyInline(signature, SIGN_SIZE, &signed_hash, WC_HASH_TYPE_SHA256, WC_MGF1SHA256, &rsa); //fix addressing here
     if (dec_len < 0) {
-        delay_ms(4900);
-        uart_write(UART0, OK); 
-        SysCtlReset();        
-        return 0;
+        uart_write(UART0, ERROR);
+        SysCtlReset();
+        return;
     }
     
     // Check the hashes of the signature
     if (wc_RsaPSS_CheckPadding(hash, MAX_ENC_ALG_SZ, signed_hash, dec_len, WC_HASH_TYPE_SHA256) != 0){
-        delay_ms(4900);
-        uart_write(UART0, OK);
-        SysCtlReset();    
-        return 0;
+        uart_write(UART0, ERROR); // Reject the firmware
+        SysCtlReset();            // Reset device
+        return;
     }
     
     page_addr = FW_TMP;
@@ -446,7 +442,7 @@ int load_firmware(void) {
         page_addr2 += FLASH_PAGESIZE;
     }
 
-    return 0;
+    return;
 }
 
 /*
