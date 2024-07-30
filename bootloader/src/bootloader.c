@@ -30,7 +30,7 @@
 #include <stdint.h>
 
 // Forward Declarations
-int load_firmware(void);
+void load_firmware(void);
 void boot_firmware(void);
 void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 
@@ -107,13 +107,9 @@ int main(void) {
 
         if (instruction == UPDATE) {
             uart_write_str(UART0, "U");
-            if (load_firmware() == 1) {
-                uart_write_str(UART0, "Failed to load firmware.\n");
-                SysCtlReset();
-            } else {
-                uart_write_str(UART0, "Loaded new firmware.\n");
-                nl(UART0);
-            }
+            load_firmware()
+            uart_write_str(UART0, "Loaded new firmware.\n");
+            nl(UART0);
         } else if (instruction == BOOT) {
             uart_write_str(UART0, "B");
             uart_write_str(UART0, "Booting firmware...\n");
@@ -137,7 +133,7 @@ void delay_ms(uint32_t ui32Ms) {
  /*
  * Load the firmware into flash.
  */
-int load_firmware(void) {
+void load_firmware(void) {
     int frame_length = 0;
     int read = 0;
     uint32_t rcv = 0;
@@ -177,7 +173,7 @@ int load_firmware(void) {
         delay_ms(4900);
         uart_write(UART0, OK); // Reject the metadata.
         SysCtlReset();            // Reset device
-        return 1;
+        return;
     } else if (version == 0) {
         // If debug firmware, don't change version
         version = old_version;
@@ -252,7 +248,7 @@ int load_firmware(void) {
     if (wc_InitSha256(&sha) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
-        return 1;
+        return;
     }
 
     unsigned char tag[16];
@@ -343,13 +339,13 @@ int load_firmware(void) {
                 delay_ms(4900);
                 uart_write(UART0, OK); // Reject the metadata.
                 SysCtlReset();            // Reset device
-                return 0;
+                return;
             }
 
             if (wc_Sha256Update(&sha, pt, data_index) != 0) {
                 uart_write(UART0, ERROR);
                 SysCtlReset();
-                return 1;
+                return;
             }
 
             // set firmware permissions in flash
@@ -374,7 +370,7 @@ int load_firmware(void) {
     if (wc_Sha256Final(&sha, hash) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
-        return 1;
+        return;
     }
 
     // Initialize RSA key and decode public key
@@ -383,7 +379,7 @@ int load_firmware(void) {
     if (wc_InitRsaKey(&rsa, NULL) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
-        return 1;
+        return;
     }
 
     byte EEPROM_RSA_PUBLIC_KEY;
@@ -392,7 +388,7 @@ int load_firmware(void) {
     if (wc_RsaPublicKeyDecode(EEPROM_RSA_PUBLIC_KEY, &idx, &rsa, sizeof(EEPROM_RSA_PUBLIC_KEY)) != 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
-        return 1;
+        return;
     }
 
     // Verify the signature
@@ -402,14 +398,14 @@ int load_firmware(void) {
     if (dec_len < 0) {
         uart_write(UART0, ERROR);
         SysCtlReset();
-        return 1;
+        return;
     }
     
     // Check the hashes of the signature
     if (wc_RsaPSS_CheckPadding(hash, MAX_ENC_ALG_SZ, signed_hash, dec_len, WC_HASH_TYPE_SHA256) != 0){
         uart_write(UART0, ERROR); // Reject the firmware
         SysCtlReset();            // Reset device
-        return 1;
+        return;
     }
     
     page_addr = FW_TMP;
@@ -431,7 +427,7 @@ int load_firmware(void) {
         page_addr2 += FLASH_PAGESIZE;
     }
 
-    return 0;
+    return;
 }
 
 /*
