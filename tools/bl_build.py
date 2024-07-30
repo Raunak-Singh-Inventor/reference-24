@@ -15,13 +15,12 @@ import subprocess
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
-
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 RSA_LENGTH = 2048
     
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
-    if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "publicKey":
+    if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "RSA_PBK":
         return
     vals = [f'{k:02X}' for k in variable]
     if isConst:
@@ -75,7 +74,7 @@ def make_bootloader() -> bool:
     secrets.write("#define SECRETS_H\n")
     write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
-    write_bytearr_to_secrets("publicKey", pubKey, secrets=secrets, isConst=False)
+    write_bytearr_to_secrets("RSA_PBK", pubKey, secrets=secrets, isConst=True)
     secrets.write("#endif")
     secrets.close()
     

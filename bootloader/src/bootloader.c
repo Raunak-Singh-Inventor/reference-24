@@ -403,7 +403,7 @@ void load_firmware(void) {
     }
 
     // Decode RSA Public Key
-    if (wc_RsaPublicKeyDecode(publicKey, &idx, &rsa, sizeof(publicKey)) != 0) {
+    if (wc_RsaPublicKeyDecode(RSA_PBK, &idx, &rsa, sizeof(RSA_PBK)) != 0) {
         delay_ms(4900);
         uart_write(UART0, ERROR);
         SysCtlReset();
