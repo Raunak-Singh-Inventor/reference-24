@@ -71,7 +71,7 @@ void disableDebugging(void){
 }
 
 int main(void) {
-    disableDebugging();
+    // disableDebugging();
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
@@ -84,9 +84,9 @@ int main(void) {
 
     EEPROMMassErase();
 
-    EEPROMProgram(AES_KEY, 0x0, 16);
-    EEPROMProgram(AES_NONCE, 0x0 + 16, 12);
-    EEPROMProgram(publicKey, 0x0 + 28, 256);
+    EEPROMProgram((uint32_t *) AES_KEY, 0x0, 16);
+    EEPROMProgram((uint32_t *) AES_NONCE, 0x0 + 16, 12);
+    EEPROMProgram((uint32_t *) publicKey, 0x0 + 28, 256);
 
     for(int i = 0; i < 16; i++) {
         AES_KEY[i] = 0;
@@ -107,13 +107,9 @@ int main(void) {
 
         if (instruction == UPDATE) {
             uart_write_str(UART0, "U");
-            if (load_firmware() == 1) {
-                uart_write_str(UART0, "Failed to load firmware.\n");
-                SysCtlReset();
-            } else {
-                uart_write_str(UART0, "Loaded new firmware.\n");
-                nl(UART0);
-            }
+            load_firmware();
+            uart_write_str(UART0, "Loaded new firmware.\n");
+            nl(UART0);
         } else if (instruction == BOOT) {
             uart_write_str(UART0, "B");
             uart_write_str(UART0, "Booting firmware...\n");
@@ -215,8 +211,8 @@ int load_firmware(void) {
     // Read Key & Nonce from EEPROM and Decrypt
     byte EEPROM_AES_KEY[16];
     byte EEPROM_AES_NONCE[12];
-    EEPROMRead(EEPROM_AES_KEY, 0x0, 16);
-    EEPROMRead(EEPROM_AES_NONCE, 0x0 + 16, 12);
+    EEPROMRead((uint32_t *) EEPROM_AES_KEY, 0x0, 16);
+    EEPROMRead((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
 
     Aes dec;
     int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
@@ -233,7 +229,7 @@ int load_firmware(void) {
         EEPROM_AES_NONCE[i]++;
     }
 
-    EEPROMProgram(EEPROM_AES_NONCE, 0x0 + 16, 12);
+    EEPROMProgram((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
     for(int i = 0; i < 12; i++) {
         EEPROM_AES_NONCE[i] = 0;
     }
@@ -243,7 +239,7 @@ int load_firmware(void) {
         delay_ms(4900);
         uart_write(UART0, OK); // Reject the metadata.
         SysCtlReset();            // Reset device
-        return;
+        return 0;
     }
     
     uart_write(UART0, OK); // Acknowledge the signature.
@@ -272,10 +268,17 @@ int load_firmware(void) {
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length += (int)rcv;
 
+        if(frame_length!=256+16) {
+            delay_ms(4900);
+            uart_write(UART0, OK); // Reject the metadata.
+            SysCtlReset();            // Reset device
+            return 0;
+        }
+
         total_frame_amt += frame_length;
         frame_ctr++;
 
-        if(total_frame_amt > 31744){
+        if(total_frame_amt > 32640){
             break;
         }
 
@@ -303,8 +306,8 @@ int load_firmware(void) {
                 // Read Key & Nonce from EEPROM and Decrypt
                 byte EEPROM_AES_KEY[16];
                 byte EEPROM_AES_NONCE[12];
-                EEPROMRead(EEPROM_AES_KEY, 0x0, 16);
-                EEPROMRead(EEPROM_AES_NONCE, 0x0 + 16, 12);
+                EEPROMRead((uint32_t *) EEPROM_AES_KEY, 0x0, 16);
+                EEPROMRead((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
 
                 Aes dec;
                 int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
@@ -323,7 +326,7 @@ int load_firmware(void) {
                     }
                 }
 
-                EEPROMProgram(EEPROM_AES_NONCE, 0x0 + 16, 12);
+                EEPROMProgram((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
                 for(int i = 0; i < 12; i++) {
                     EEPROM_AES_NONCE[i] = 0;
                 }
@@ -333,7 +336,7 @@ int load_firmware(void) {
                     delay_ms(4900);
                     uart_write(UART0, OK); // Reject the metadata.
                     SysCtlReset();            // Reset device
-                    return;
+                    return 0;
                 }
             }
 
@@ -341,25 +344,26 @@ int load_firmware(void) {
             // Try to write flash and check for error
             if (program_flash((uint8_t *) page_addr, pt, FLASH_PAGESIZE)) {
                 delay_ms(4900);
-                uart_write(UART0, OK); // Reject the metadata.
-                SysCtlReset();            // Reset device
+                uart_write(UART0, OK);
+                SysCtlReset(); 
                 return 0;
             }
 
             if (wc_Sha256Update(&sha, pt, data_index) != 0) {
-                uart_write(UART0, ERROR);
-                SysCtlReset();
-                return 1;
+                delay_ms(4900);
+                uart_write(UART0, OK);
+                SysCtlReset();      
+                return 0;
             }
 
             // set firmware permissions in flash
             if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
-                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly);
-            }
-
-            // set firmware permissions in flash
-            if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
-                FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly);
+                if(FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly)!=0) {
+                    delay_ms(4900);
+                    uart_write(UART0, OK);
+                    SysCtlReset();
+                    return 0;
+                }
             }
 
             // Update to next page
@@ -372,27 +376,30 @@ int load_firmware(void) {
             
     // Finalize Sha256 Final
     if (wc_Sha256Final(&sha, hash) != 0) {
-        uart_write(UART0, ERROR);
+        delay_ms(4900);
+        uart_write(UART0, OK);
         SysCtlReset();
-        return 1;
+        return 0;
     }
 
     // Initialize RSA key and decode public key
     RsaKey rsa;
     word32 idx = 0;
     if (wc_InitRsaKey(&rsa, NULL) != 0) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
+        delay_ms(4900);
+        uart_write(UART0, OK);
+        SysCtlReset();          
+        return 0;
     }
 
-    byte EEPROM_RSA_PUBLIC_KEY;
-    EEPROMRead(EEPROM_RSA_PUBLIC_KEY, 0x0 + 28, 256);
+    byte EEPROM_RSA_PUBLIC_KEY[256];
+    EEPROMRead((uint32_t *) EEPROM_RSA_PUBLIC_KEY, 0x0 + 28, 256);
     // Decode RSA Public Key
     if (wc_RsaPublicKeyDecode(EEPROM_RSA_PUBLIC_KEY, &idx, &rsa, sizeof(EEPROM_RSA_PUBLIC_KEY)) != 0) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
+        delay_ms(4900);
+        uart_write(UART0, OK);
+        SysCtlReset();  
+        return 0;
     }
 
     // Verify the signature
@@ -400,16 +407,18 @@ int load_firmware(void) {
     unsigned char *signed_hash;
     int dec_len = wc_RsaPSS_VerifyInline(signature, SIGN_SIZE, &signed_hash, WC_HASH_TYPE_SHA256, WC_MGF1SHA256, &rsa); //fix addressing here
     if (dec_len < 0) {
-        uart_write(UART0, ERROR);
-        SysCtlReset();
-        return 1;
+        delay_ms(4900);
+        uart_write(UART0, OK); 
+        SysCtlReset();        
+        return 0;
     }
     
     // Check the hashes of the signature
     if (wc_RsaPSS_CheckPadding(hash, MAX_ENC_ALG_SZ, signed_hash, dec_len, WC_HASH_TYPE_SHA256) != 0){
-        uart_write(UART0, ERROR); // Reject the firmware
-        SysCtlReset();            // Reset device
-        return 1;
+        delay_ms(4900);
+        uart_write(UART0, OK);
+        SysCtlReset();    
+        return 0;
     }
     
     page_addr = FW_TMP;
@@ -417,13 +426,19 @@ int load_firmware(void) {
         // Try to write flash and check for error
         if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
-            return;
+            return 0;
         }
 
         // set firmware permissions in flash
         if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
-            FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly);
-            FlashProtectSet(page_addr2-FLASH_PAGESIZE, FlashExecuteOnly);
+            if(FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
+                SysCtlReset();
+                return 0;
+            }
+            if(FlashProtectSet(page_addr2-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
+                SysCtlReset();
+                return 0;
+            }
         }
 
         // Update to next page
