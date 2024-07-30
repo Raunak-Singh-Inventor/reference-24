@@ -132,6 +132,10 @@ python bl_build.py
 sudo lm4flash ../bootloader/bin/bootloader.bin
 ```
 
+Note: if flashing to the bootloader does not work, you may have triggered our anti-debug feature. In order to fix this, please
+download the official TI [LMFLASHPROGRAMMER](https://www.ti.com/tool/LMFLASHPROGRAMMER) and follow the detailed steps to 
+reset/unlock your board.
+
 # Bundling and Updating Firmware
 
 1. Enter the firmware directory and `make` the example firmware.
