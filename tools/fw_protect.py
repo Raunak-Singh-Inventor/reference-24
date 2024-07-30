@@ -18,9 +18,11 @@ from Crypto.PublicKey import RSA
 
 def protect_firmware(infile, outfile, version, message):
 
-    # Load secrets
-    with open('secret_build_output.txt', 'rb') as secrets_file:
-        pwd = secrets_file.readline().strip(b'\n')
+    # Load secrets to import passwords, key, and nonce
+    with open('secret_build_output.txt', 'rb') as build_output:
+        pwd = bytes.fromhex(build_output.readline())[:16]
+        key = bytes.fromhex(build_output.readline())[:16]
+        nonce = bytes.fromhex(build_output.readline())[:12]
 
     # Load private key
     with open("privatekey.pem", "rb") as f:
@@ -42,12 +44,6 @@ def protect_firmware(infile, outfile, version, message):
 
     # Initialize the firmware blob
     firmware_blob = metadata
-
-    # Read the key & nonce
-    build_output = open("secret_build_output.txt", "r")
-    key = bytes.fromhex(build_output.readline())[:16]
-    nonce = bytes.fromhex(build_output.readline())[:12]
-    build_output.close()
 
     h = SHA256.new()
     h.update(firmware_and_message)
