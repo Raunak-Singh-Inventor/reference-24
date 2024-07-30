@@ -19,7 +19,7 @@ from Crypto.PublicKey import RSA
 def protect_firmware(infile, outfile, version, message):
 
     # Load secrets to import passwords, key, and nonce
-    with open('secret_build_output.txt', 'rb') as build_output:
+    with open('secret_build_output.txt', 'r') as build_output:
         pwd = bytes.fromhex(build_output.readline())[:16]
         key = bytes.fromhex(build_output.readline())[:16]
         nonce = bytes.fromhex(build_output.readline())[:12]
