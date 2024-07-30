@@ -19,9 +19,6 @@ from Crypto.Random import get_random_bytes
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 RSA_LENGTH = 2048
-
-def arrayize(binary_string):
-    return '{' + ','.join([hex(char) for char in binary_string]) + '}'
     
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "publicKey":
