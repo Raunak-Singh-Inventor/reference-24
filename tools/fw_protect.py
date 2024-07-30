@@ -7,7 +7,6 @@
 Firmware Bundle-and-Protect Tool
 
 """
-import os
 import argparse
 from pwn import p16
 from Crypto.Cipher import AES
@@ -43,7 +42,7 @@ def protect_firmware(infile, outfile, version, message):
     firmware_and_message = firmware + message.encode() + b"\00"
 
     # Pad firmware and message if not already a multiple of 1024 bytes
-    if len(firmware_and_message)%1024>0:
+    if len(firmware_and_message) % 1024 > 0:
         firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
 
     # Hash firmware and message with SHA256 and sign with RSA PSS
@@ -51,21 +50,22 @@ def protect_firmware(infile, outfile, version, message):
     h.update(firmware_and_message)
     signer = pss.new(priv_key)
     signature = signer.sign(h)
-    firmware_and_message = signature + firmware_and_message # Add signature to start of the firmware and message
+    firmware_and_message = signature + firmware_and_message  # Add signature to start of the firmware and message
 
     # Encrypt firmware and message with AES-GCM in blocks of 256 bytes
     i = 0
     while i < len(firmware_and_message):
         cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
-        cipher.update(metadata) # Update AAD to the AES encryption
+        cipher.update(metadata)  # Update AAD to the AES encryption
         ciphertext, tag = cipher.encrypt_and_digest(firmware_and_message[i:i + 256])
         nonce = int.to_bytes(int.from_bytes(nonce, byteorder="little") + 1, byteorder="little", length=12) # Increment nonce
         firmware_blob += tag + ciphertext
-        i += 256 # Go to next block of firmware
+        i += 256  # Go to next block of firmware
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
         outfile.write(firmware_blob)
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Firmware Update Tool")

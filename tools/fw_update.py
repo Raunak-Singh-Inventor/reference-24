@@ -26,7 +26,6 @@ import argparse
 from pwn import p16, u16
 import time
 import serial
-
 from util import print_hex
 
 # Initialize serial device
@@ -35,6 +34,7 @@ ser = serial.Serial("/dev/ttyACM0", 115200)
 # Define global variables
 RESP_OK = b"\x00"
 FRAME_SIZE = 256 + 16
+
 
 # Pack metadata in little endian format, start handshake, and send to bootloader
 def send_metadata(ser, metadata, debug=False):
@@ -62,6 +62,7 @@ def send_metadata(ser, metadata, debug=False):
     if resp != RESP_OK:
         raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
 
+
 # Send frame to serial
 def send_frame(ser, frame, debug=False):
     ser.write(frame)  # Write the frame...
@@ -82,7 +83,6 @@ def send_frame(ser, frame, debug=False):
 
 # Send firmware for updating
 def update(ser, infile, debug):
-    
     # Open serial port. Set baudrate to 115200. Set timeout to 2 seconds.
     with open(infile, "rb") as fp:
         firmware_blob = fp.read()
@@ -97,12 +97,11 @@ def update(ser, infile, debug):
     # Loop through the firmware, make the respective frames, and send the frames to the bootloader using send_frame
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
         data = firmware[frame_start:frame_start + FRAME_SIZE]
-
         # Construct frame.
         frame = p16(len(data), endian='big') + data
         send_frame(ser, frame, debug=debug)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
-   
+
     print("Done writing firmware.")
 
     # Send a zero-length payload to tell the bootloader to finish writing its page.
