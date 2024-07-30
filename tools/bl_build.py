@@ -17,12 +17,21 @@ from Crypto.Random import get_random_bytes
 
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
+
+# Define RSA key length
 RSA_LENGTH = 2048
-    
+
+# Formats inputted byte array to be written to secrets.h
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
+    
+    # Make sure that the variables inputted are only variables we are writing to secrets
     if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "RSA_PBK":
         return
+
+    # Arrayize the variable array
     vals = [f'{k:02X}' for k in variable]
+
+    # Write to secrets with the correct format
     if isConst:
         secrets.write("const ")
     secrets.write("unsigned char " + variable_name + "[" + str(len(variable)) + "] = {")
@@ -33,8 +42,13 @@ def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     secrets.write("};\n")
 
 
+# Formats inputted variable to be written to secret_build_output.txt
 def write_bytes_to_build_output(variable, build_output):
+
+    # Arrayize the variable array
     vals = [f'{k:02X}' for k in variable]
+
+    # Write variable to secret_build_output.txt
     for i in range(0, len(variable)):
         build_output.write(vals[i])
         build_output.write(" ")
@@ -50,7 +64,7 @@ def make_bootloader() -> bool:
     # Create password for RSA key
     pwd = get_random_bytes(16)
 
-    # Write keys & nonce to secret_build_output.txt
+    # Write password, key, and nonce to secret_build_output.txt
     build_output = open("secret_build_output.txt", "w")
     write_bytes_to_build_output(pwd, build_output=build_output)
     write_bytes_to_build_output(key, build_output=build_output)
@@ -60,30 +74,32 @@ def make_bootloader() -> bool:
     os.chdir(BOOTLOADER_DIR)  # Change to bootloader directory
 
     # Create RSA keys
-    rsaKey = RSA.generate(RSA_LENGTH)
-    pubKey = rsaKey.publickey().exportKey(format = 'DER')
+    rsa_key = RSA.generate(RSA_LENGTH)
+    pub_key = rsa_key.publickey().exportKey(format = 'DER')
 
     # Export private key securely to privatekey.pem
     with open("../tools/privatekey.pem", "wb") as f:
-        data = rsaKey.export_key(format = "PEM", passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
+        data = rsa_key.export_key(format = "PEM", passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
         f.write(data)
 
-    # write keys & nonce to inc/secrets.h
+    # Write keys & nonce to inc/secrets.h with proper header information
     secrets = open("inc/secrets.h", "w")
     secrets.write("#ifndef SECRETS_H\n")
     secrets.write("#define SECRETS_H\n")
     write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
-    write_bytearr_to_secrets("RSA_PBK", pubKey, secrets=secrets, isConst=True)
+    write_bytearr_to_secrets("RSA_PBK", pub_key, secrets=secrets, isConst=True)
     secrets.write("#endif")
     secrets.close()
     
-    # build the bootloader
+    # Build the bootloader
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")
 
-    # remove secrets.h after build
+    # Remove secrets.h after build
     os.remove("inc/secrets.h")
+
+    #  Remove bin/bootloader.axf after build if not removed already
     if os.path.exists("bin/bootloader.axf"):
         os.remove("bin/bootloader.axf")
 
