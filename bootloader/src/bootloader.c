@@ -196,7 +196,7 @@ void load_firmware(void) {
         delay_ms(4900);
         uart_write(UART0, ERROR); // Reject the metadata.
         SysCtlReset();            // Reset device
-        return 0;
+        return;
     }
 
     unsigned char signature_frame[signature_size];
