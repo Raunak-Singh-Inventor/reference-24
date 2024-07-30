@@ -54,6 +54,43 @@ The `bootloader` directory contains source code that is compiled and loaded onto
 
 The bootloader will also start the execution of the loaded vehicle firmware.
 
+### bootloader.c
+The bootloader.c file contains the bulk of the code used for the bootloader. The
+main job of the bootloader is to receive the keys required to decrypt and verify
+the firmware in a secure fashion, then to receive the firmware, decrypt it, and then
+verify its integrity and authenticity before allowing it to be booted.
+
+Two main algorithms are used during this process, these being AES-GCM and RSA (with
+a SHA-256 hash). All secrets are securely read in through a header file, `secrets.h`.
+The key and nonce for the AES procedure are then securely stored in EEPROM, while the
+RSA public key will be subsequently used for verification procedures.
+
+The metadata is read in and stored in a 4 byte array, `aad`. The metadata consists
+of a version short and a size short, which encodes the version number and size of 
+the firmware respectively. The version number is compared with the current loaded
+firmware to prevent rollback to earlier versions. The metadata is used as 
+additional authenticated data in the AES process in order to ensure authenticity.
+
+The signature is then read in and split into the signature ciphertext encrypted with
+AES, `signature_ct`, and the authentication tag, `signature_tag`. The key and nonce
+for AES, `EEPROM_AES_KEY` and `EEPROM_AES_NONCE` are read in and used to decrypt 
+`signature_ct` and store it in `signature`. Then, nonce is incremented to ensure
+security.
+
+After a Sha256 object is initialized to compare the hashes to, we begin reading in
+the firmware in frames. Each frame begins with a size and is followed by data. 
+Once we fill our page buffer, we decrypt it using the AES key and nonce, and then 
+it is programmed to a temporary location in flash, encoded in `FW_BASE`to ensure 
+that we have a working firmware at all times. The flash is programmed to be readonly
+and the nonce is incremented each time to ensure security. Each time, the Sha256
+object is also updated to calculate the hash.
+
+After all the firmware is read in and decrypted successfully, the Sha256 hash is
+calculated. Then, using RSA we verify the signature by hashing the new hash that
+was directly calculated from the firmware we read in. If it matches the sent hash,
+the firmware is accepted and we rewrite the firmware to the permanent location 
+in flash, encoded in `FW_BASE`.
+
 ## Tools
 
 There are three python scripts in the `tools` directory which are used to:

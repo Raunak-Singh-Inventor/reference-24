@@ -15,10 +15,12 @@ import subprocess
 from Crypto.PublicKey import RSA
 from Crypto.Random import get_random_bytes
 
+
 REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 RSA_LENGTH = 2048
-    
+
+
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "RSA_PBK":
         return
@@ -42,11 +44,10 @@ def write_bytes_to_build_output(variable, build_output):
 
 
 def make_bootloader() -> bool:
-
     # Generate AES-GCM key and nonce
     key = get_random_bytes(16)
     nonce = b'\x00' * 8 + get_random_bytes(4)
-    
+
     # Create password for RSA key
     pwd = get_random_bytes(16)
 
@@ -61,11 +62,11 @@ def make_bootloader() -> bool:
 
     # Create RSA keys
     rsaKey = RSA.generate(RSA_LENGTH)
-    pubKey = rsaKey.publickey().exportKey(format = 'DER')
+    pubKey = rsaKey.publickey().exportKey(format='DER')
 
     # Export private key securely to privatekey.pem
     with open("../tools/privatekey.pem", "wb") as f:
-        data = rsaKey.export_key(format = "PEM", passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
+        data = rsaKey.export_key(format="PEM", passphrase=pwd, pkcs=8, protection='PBKDF2WithHMAC-SHA512AndAES256-CBC', prot_params={'iteration_count':131072})
         f.write(data)
 
     # write keys & nonce to inc/secrets.h
@@ -77,7 +78,7 @@ def make_bootloader() -> bool:
     write_bytearr_to_secrets("RSA_PBK", pubKey, secrets=secrets, isConst=True)
     secrets.write("#endif")
     secrets.close()
-    
+
     # build the bootloader
     subprocess.call("make clean", shell=True)
     status = subprocess.call("make")

@@ -17,7 +17,6 @@ from Crypto.PublicKey import RSA
 
 
 def protect_firmware(infile, outfile, version, message):
-
     # Load secrets to import passwords, key, and nonce
     build_output = open('secret_build_output.txt', 'r')
     pwd = bytes.fromhex(build_output.readline())[:16]
@@ -29,7 +28,7 @@ def protect_firmware(infile, outfile, version, message):
     with open("privatekey.pem", "rb") as f:
         data = f.read()
         priv_key = RSA.import_key(data, pwd)
-    
+
     # Load firmware binary from infile
     with open(infile, "rb") as fp:
         firmware = fp.read()
@@ -44,7 +43,7 @@ def protect_firmware(infile, outfile, version, message):
     firmware_and_message = firmware + message.encode() + b"\00"
 
     # Pad firmware and message
-    if len(firmware_and_message)%1024>0:
+    if len(firmware_and_message) % 1024 > 0:
         firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
 
     h = SHA256.new()
