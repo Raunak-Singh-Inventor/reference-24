@@ -288,7 +288,7 @@ void load_firmware(void) {
         total_frame_amt += frame_length;
         frame_ctr++;
 
-        if(total_frame_amt > 32640){
+        if(total_frame_amt > 33728){
             break;
         }
 
