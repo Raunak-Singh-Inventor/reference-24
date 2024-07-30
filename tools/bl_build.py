@@ -78,8 +78,7 @@ def make_bootloader() -> bool:
     secrets.write("#define SECRETS_H\n")
     write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
-    # write_bytearr_to_secrets("publicKey", pubKey, secrets=secrets, isConst=False)
-    secrets.write("const uint8_t publicKey[" + str(RSA_LENGTH) + "] = " + arrayize(pubKey) + ";\n")
+    write_bytearr_to_secrets("publicKey", pubKey, secrets=secrets, isConst=False)
     secrets.write("#endif")
     secrets.close()
     
