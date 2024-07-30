@@ -38,14 +38,14 @@ Directories marked with * are part of the CrASHBoot system
 Credits: Shubh, Stephanie, & Lin
 
 # AES-GCM
-AES-GCM encrypts firmware frames in (`tools/fw_protect.py`) using a private key and counter nonce under pycryptodome's implementation, with the version number and firmware size used as Additional Authenticated Data (AAD). (`tools/fw_update.py`) sends these encrypted frames to the bootloader over a serial connection. See below for our frame format.
+AES-GCM encrypts firmware frames in `tools/fw_protect.py` using a private key and counter nonce under pycryptodome's implementation, with the version number and firmware size used as Additional Authenticated Data (AAD). `tools/fw_update.py` sends these encrypted frames to the bootloader over a serial connection. See below for our frame format.
 
 <img width="762" alt="frames" src="https://github.com/user-attachments/assets/0d35d2ca-5981-4920-b7c0-3336816b1b57">
 
-In (`bootloader/src/bootloader.c`), the received private key and nonce are placed in EEPROM. Metadata (version number and size) are received, and frames are decrypted using the wolfSSL library's implementation of AES_GCM. The decrypted firmware is loaded and booted.
+In `bootloader/src/bootloader.c`, the received private key and nonce are placed in EEPROM. Metadata (version number and size) are received, and frames are decrypted using the wolfSSL library's implementation of AES_GCM. The decrypted firmware is loaded and booted.
 
 # RSA
-RSA PSS (Probabilistic Signature Scheme) encrypts (signs) the SHA-256 hash of the firmware with a private key.  Thus, if someone decrypts the ciphertext with the public key and receives a matching text to the hashed firmware, they know the firmware is authentic. The signature is sent in a frame before the ciphertext frames. Firmware is signed in (`tools/fw_protect.py`) using pycryptodome's pss module, and decrypted/verified in (`bootloader/src/bootloader.c`) using wolfSSL.
+RSA PSS (Probabilistic Signature Scheme) encrypts (signs) the SHA-256 hash of the firmware with a private key.  Thus, if someone decrypts the ciphertext with the public key and receives a matching text to the hashed firmware, they know the firmware is authentic. The signature is sent in a frame before the ciphertext frames. Firmware is signed in `tools/fw_protect.py` using pycryptodome's pss module, and decrypted/verified in `bootloader/src/bootloader.c` using wolfSSL.
 
 ## Bootloader
 
