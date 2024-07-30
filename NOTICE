@@ -1,0 +1,48 @@
+NOTICE
+
+This product includes software developed by Team Super Auto Pets.
+
+-------------------------------------------------------------------------------
+
+CrASHBOOT v0
+
+Copyright (c) 2024 Team Super Auto Pets
+
+This product includes code developed by Team Super Auto Pets. Proper attribution must include the name of Team Super Auto Pets and the names of the contributors to their repository.
+
+-------------------------------------------------------------------------------
+
+Licensed under the Apache License 2.0.
+
+You may obtain a copy of the License at:
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+
+-------------------------------------------------------------------------------
+
+Third-party software components included in this project:
+
+1. WolfCrypt
+   - Description: Used for cryptographic operations in C
+   - URL: https://www.wolfssl.com/products/wolfcrypt/
+
+2. PyCryptodome
+   - Description: Used for cryptographic operations in Python
+   - URL: https://github.com/Legrandin/pycryptodome
+
+-------------------------------------------------------------------------------
+
+Special Thanks:
+
+We would like to thank the following contributors for their contributions:
+
+- Raunak Singh
+- Shubh Varshney
+- Lin Jiang
+- Stephanie Wan
