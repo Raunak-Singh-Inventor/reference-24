@@ -63,9 +63,6 @@ def protect_firmware(infile, outfile, version, message):
         firmware_blob += tag + ciphertext
         i += 256
 
-    # Delete privatekey.pem
-    os.remove("privatekey.pem")
-
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
         outfile.write(firmware_blob)
