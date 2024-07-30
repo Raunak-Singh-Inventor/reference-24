@@ -72,8 +72,7 @@ void disableDebugging(void){
 }
 
 int main(void) {
-    // Call disableDebugging first in main to prevent debugging
-    disableDebugging();
+    //disableDebugging();
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
