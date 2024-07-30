@@ -48,6 +48,7 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 #define ERROR ((unsigned char)0x01)
 #define UPDATE ((unsigned char)'U')
 #define BOOT ((unsigned char)'B')
+#define DEBUG ((unsigned char)'D')
 
 // Device Metadata
 uint16_t * fw_version_address = (uint16_t *)METADATA_BASE;
@@ -63,6 +64,13 @@ unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 // Sha-256 Object and Buffer
 unsigned char hash[WC_SHA256_DIGEST_SIZE];
 Sha256 sha;
+
+// Disables debugging by locking the board
+void disableDebugging(void){
+    HWREG(FLASH_FMA) = 0x75100000;
+    HWREG(FLASH_FMD) = HWREG(FLASH_BOOTCFG) & 0x7FFFFFFC;
+    HWREG(FLASH_FMC) = FLASH_FMC_WRKEY | FLASH_FMC_COMT;
+}
 
 int main(void) {
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
@@ -91,8 +99,9 @@ int main(void) {
 
     initialize_uarts(UART0);
 
+    // Read serial character and parse
     uart_write_str(UART0, "Welcome to the BWSI Vehicle Update Service!\n");
-    uart_write_str(UART0, "Send \"U\" to update, and \"B\" to run the firmware.\n");
+    uart_write_str(UART0, "Send \"U\" to update, \"B\" to run the firmware, and \"D\" to \"debug\".\n");
 
     int resp;
     while (1) {
@@ -107,6 +116,10 @@ int main(void) {
             uart_write_str(UART0, "B");
             uart_write_str(UART0, "Booting firmware...\n");
             boot_firmware();
+        } else if (instruction == DEBUG) {
+            uart_write_str(UART0, "D");
+            uart_write_str(UART0, "Debugging detected! Anti-debugging software enabled...\n");
+            disableDebugging();
         }
     }
 }
