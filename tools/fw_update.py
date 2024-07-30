@@ -15,7 +15,7 @@ A frame consists of two sections:
 | Length | Data... |
 --------------------
 
-In our case, the data is from one line of the Intel Hex formated .hex file
+In our case, the data is from one line of the Intel Hex formatted .hex file
 
 We write a frame to the bootloader, then wait for it to respond with an
 OK message so we can write the next frame. The OK message in this case is
@@ -23,22 +23,24 @@ just a zero
 """
 
 import argparse
-from pwn import *
+from pwn import p16, u16
 import time
 import serial
+from util import print_hex
 
-from util import *
-
+# Initialize serial device
 ser = serial.Serial("/dev/ttyACM0", 115200)
 
+# Define global variables
 RESP_OK = b"\x00"
-FRAME_SIZE = 256
+FRAME_SIZE = 256 + 16
 
 
+# Pack metadata in little endian format, start handshake, and send to bootloader
 def send_metadata(ser, metadata, debug=False):
-    assert(len(metadata) == 4)
+    assert len(metadata) == 4
     version = u16(metadata[:2], endian='little')
-    size = u16(metadata[2:], endian='little')
+    size = u16(metadata[2:4], endian='little')
     print(f"Version: {version}\nSize: {size} bytes\n")
 
     # Handshake for update
@@ -61,6 +63,7 @@ def send_metadata(ser, metadata, debug=False):
         raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
 
 
+# Send frame to serial
 def send_frame(ser, frame, debug=False):
     ser.write(frame)  # Write the frame...
 
@@ -78,34 +81,35 @@ def send_frame(ser, frame, debug=False):
         print("Resp: {}".format(ord(resp)))
 
 
+# Send firmware for updating
 def update(ser, infile, debug):
     # Open serial port. Set baudrate to 115200. Set timeout to 2 seconds.
     with open(infile, "rb") as fp:
         firmware_blob = fp.read()
 
+    # Separate firmware blob into metadata and firmware
     metadata = firmware_blob[:4]
     firmware = firmware_blob[4:]
 
+    # Send the metadata using send_metadata
     send_metadata(ser, metadata, debug=debug)
 
+    # Loop through the firmware, make the respective frames, and send the frames to the bootloader using send_frame
     for idx, frame_start in enumerate(range(0, len(firmware), FRAME_SIZE)):
-        data = firmware[frame_start : frame_start + FRAME_SIZE]
-
+        data = firmware[frame_start:frame_start + FRAME_SIZE]
         # Construct frame.
         frame = p16(len(data), endian='big') + data
-
         send_frame(ser, frame, debug=debug)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
 
     print("Done writing firmware.")
 
-    # Send a zero length payload to tell the bootlader to finish writing it's page.
+    # Send a zero-length payload to tell the bootloader to finish writing its page.
     ser.write(p16(0x0000, endian='big'))
-    resp = ser.read(1)  # Wait for an OK from the bootloader
+    resp = ser.read(1)
     if resp != RESP_OK:
         raise RuntimeError("ERROR: Bootloader responded to zero length frame with {}".format(repr(resp)))
-    print(f"Wrote zero length frame (2 bytes)")
-
+    print("Wrote zero length frame (2 bytes)")
     return ser
 
 

@@ -26,9 +26,16 @@ cscope*
 *.la
 *.lo
 
+# Keys
+*.pem
+secrets.h
+
 # Executables
 *.axf
 *.bin 
+
+# Mac OS Files
+*.DS_store
 
 ## Python
 
@@ -59,5 +66,11 @@ venv.bak/
 
 # Secrets template
 bootloader/inc/secrets.h
+bootloader/src/secrets.h
 tools/secret_build_output.txt
 secret_build_output.txt
+
+# Mac OpenOCD Debugger Config
+tools/debug-interface.cfg
+tools/board.cfg
+
