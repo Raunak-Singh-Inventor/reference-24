@@ -2,14 +2,13 @@
 // Approved for public release. Distribution unlimited 23-02181-25.
 
 #include "bootloader.h"
-#include "secrets.h" // Secrets file
+#include "secrets.h" // Import secrets file
 
 // Hardware Imports
 #include "inc/hw_memmap.h"    // Peripheral Base Addresses
 #include "inc/hw_types.h"     // Boolean type
 #include "inc/tm4c123gh6pm.h" // Peripheral Bit Masks and Registers
-// #include "inc/hw_ints.h" // Interrupt numbers
-#include "inc/hw_flash.h"
+#include "inc/hw_flash.h" // Flash Registers
 
 // Driver API Imports
 #include "driverlib/flash.h"     // FLASH API
@@ -37,7 +36,7 @@ void uart_write_hex_bytes(uint8_t, uint8_t *, uint32_t);
 // Firmware Constants
 #define METADATA_BASE 0xFC00 // base address of version and firmware size in Flash
 #define FW_BASE 0x20000      // base address of firmware in Flash
-#define FW_TMP 0x10000       // temporary address of firmware in Flash without checking
+#define FW_TMP 0x10000       // temporary address of firmware in Flash before it is completely verified
 #define MAX_ENC_ALG_SZ 32   // maximum bound on digest algorithm encoding around digest
 
 // FLASH Constants
@@ -57,6 +56,7 @@ uint8_t * fw_release_message_address;
 
 // Firmware Buffer
 unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
+
 //RSA Constant
 #define RSA_SIZE 2048
 
@@ -64,6 +64,7 @@ unsigned char tag_and_data[FLASH_PAGESIZE+4*16];
 unsigned char hash[WC_SHA256_DIGEST_SIZE];
 Sha256 sha;
 
+// Disables debugging by locking the board
 void disableDebugging(void){
     HWREG(FLASH_FMA) = 0x75100000;
     HWREG(FLASH_FMD) = HWREG(FLASH_BOOTCFG) & 0x7FFFFFFC;
@@ -71,6 +72,7 @@ void disableDebugging(void){
 }
 
 int main(void) {
+    // Call disableDebugging first in main to prevent debugging
     disableDebugging();
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
@@ -79,18 +81,20 @@ int main(void) {
     while (!SysCtlPeripheralReady(SYSCTL_PERIPH_EEPROM0)) {
     }
 
-    // Write Key & Nonce to EEPROM
+    // Initialize EEPROM
     EEPROMInit();
-
     EEPROMMassErase();
 
+    // Write AES Key and Nonce to EEPROM
     EEPROMProgram((uint32_t *) AES_KEY, 0x0, 16);
     EEPROMProgram((uint32_t *) AES_NONCE, 0x0 + 16, 12);
 
+    // Erase data from AES_KEY
     for(int i = 0; i < 16; i++) {
         AES_KEY[i] = 0;
     }
-    
+
+    // Erase data from AES_NONCE
     for(int i = 0; i < 12; i++) {
         AES_NONCE[i] = 0;
     }
@@ -120,29 +124,28 @@ int main(void) {
 /*
 *   Credits for this function: Amit Rana 
 */
+
+// Delays program flow by ui32Ms seconds
 void delay_ms(uint32_t ui32Ms) {
-    // 1 clock cycle = 1 / SysCtlClockGet() second
-    // 1 SysCtlDelay = 3 clock cycle = 3 / SysCtlClockGet() second
-    // 1 second = SysCtlClockGet() / 3
-    // 0.001 second = 1 ms = SysCtlClockGet() / 3 / 1000
-    
     SysCtlDelay(ui32Ms * (SysCtlClockGet() / 3 / 1000));
 }
 
- /*
- * Load the firmware into flash.
- */
+// Load the firmware into flash.
 void load_firmware(void) {
+
+    // Initialize variables for serial reading
     int frame_length = 0;
     int read = 0;
     uint32_t rcv = 0;
 
+    // Initialize variables for flash programming
     uint32_t data_index = 0;
     uint32_t page_addr = FW_TMP;
-    uint32_t page_addr2 = FW_BASE;
+    uint32_t real_page_addr = FW_BASE;
+
+    // Initialize variables for metadata
     uint32_t version = 0;
     uint32_t size = 0;
-
     byte aad[4];
 
     // Get version.
@@ -192,6 +195,7 @@ void load_firmware(void) {
     rcv = uart_read(UART0, BLOCKING, &read);
     signature_size += (int) rcv;
 
+    // Verify the signature size is correct
     if(signature_size!=256+16) {
         delay_ms(4900);
         uart_write(UART0, ERROR); // Reject the metadata.
@@ -199,51 +203,57 @@ void load_firmware(void) {
         return;
     }
 
+    // Load in signature frame from serial
     unsigned char signature_frame[signature_size];
     for (int i = 0; i < signature_size; ++i) {
         signature_frame[i] = uart_read(UART0, BLOCKING, &read);
     } // for
 
+    // Initialize signature buffers for AES-GCM decryption
     unsigned char signature_tag[16];
     unsigned char signature_ct[256];
     unsigned char signature[(signature_size - 16) * 2];
 
+    // Get signature tag and signature ciphertext from the signature frame
     for(int i = 0; i < 16; i++) {
         signature_tag[i] = signature_frame[i];
-    }
+    } // for
     for(int i = 0; i < 256; i++) {
         signature_ct[i] = signature_frame[16 + i];
-    }
+    } // for
 
-    // Read Key & Nonce from EEPROM and Decrypt
+    // Read Key & Nonce from EEPROM
     byte EEPROM_AES_KEY[16];
     byte EEPROM_AES_NONCE[12];
     EEPROMRead((uint32_t *) EEPROM_AES_KEY, 0x0, 16);
     EEPROMRead((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
 
+    // Decrypt signature ciphertext with AES-GCM
     Aes dec;
     int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
     int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
     int res3 = wc_AesGcmDecrypt(&dec, signature, signature_ct, 256, EEPROM_AES_NONCE, 12, signature_tag, 16, aad, 4); 
     wc_AesFree(&dec);
 
+    // Erase data from EEPROM_AES_Key
     for(int i = 0; i < 16; i++) {
         EEPROM_AES_KEY[i] = 0;
-    }
+    } // for
 
-    // Increment nonce
+    // Increment nonce for next decryption
     for(int i = 0; i < 12; i++) {
         if(++EEPROM_AES_NONCE[i]!=0) {
             break;
         }
-    }
+    } // for
 
+    // Erase data from EEPROM_AES_NONCE
     EEPROMProgram((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
     for(int i = 0; i < 12; i++) {
         EEPROM_AES_NONCE[i] = 0;
-    }
+    } // for
 
-    // break if not decrypt properly
+    // Exit if signature failed to decrypt properly at any point
     if(res1!=0 || res2!=0 || res3!=0) {
         delay_ms(4900);
         uart_write(UART0, ERROR); // Reject the metadata.
@@ -261,16 +271,20 @@ void load_firmware(void) {
         return;
     }
 
+    // Initialize buffers for AES-GCM decryption
     unsigned char tag[16];
     unsigned char ct[256];
     unsigned char pt[FLASH_PAGESIZE]; // buffer to store decrypted firmware
-    /* Loop here until you can get all your characters and stuff */
+
+    // Initialize counter variables
     int i = 0;
     int j = 0;
+
+    // Initialize frame counting variables for length verification and firmware transfer
     int total_frame_amt = 0;
     int frame_ctr = 0;
 
-    
+    // Loop to receive frames, decrypt them, and store them in temporary flash
     while (1) {
         // Get two bytes for the length.
         rcv = uart_read(UART0, BLOCKING, &read);
@@ -278,6 +292,7 @@ void load_firmware(void) {
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length += (int)rcv;
 
+        // Verify that the frame length is valid
         if(frame_length!=256+16 && frame_length!=0) {
             delay_ms(4900);
             uart_write(UART0, ERROR); // Reject the metadata.
@@ -285,14 +300,16 @@ void load_firmware(void) {
             return;
         }
 
+        // Increment frame counting variables
         total_frame_amt += frame_length;
         frame_ctr++;
 
+        // Break if the firmware being sent exceeds the maximum firmware length that the bootloader supports.
         if(total_frame_amt > 33728){
             break;
         }
 
-        // Get the number of bytes specified
+        // Get the number of bytes specified in frame_length
         for (i = 0; i < frame_length; ++i) {
             tag_and_data[data_index] = uart_read(UART0, BLOCKING, &read);
             data_index++;
@@ -300,48 +317,56 @@ void load_firmware(void) {
 
         // If we filled our page buffer, program it
         if (data_index == FLASH_PAGESIZE+64 || frame_length == 0) {
+            
+            // Break if at zero length frame
             if(frame_length==0) {
                 uart_write(UART0, OK);
                 break;
             }
 
+            // Loop through the 4 AES blocks in the 1024 bytes of FLASH_PAGESIZE
             for(i = 0; i < 4; i++) {
+
+                // Get the tag and ciphertext from the frame data
                 for(j = 0; j < 16; j++) {
                     tag[j] = tag_and_data[i*(256+16)+j];
-                }
+                } // for
                 for(j = 0; j < 256; j++) {
                     ct[j] = tag_and_data[i*(256+16)+j+16];
-                }
+                } // for
 
-                // Read Key & Nonce from EEPROM and Decrypt
+                // Read Key & Nonce from EEPROM
                 byte EEPROM_AES_KEY[16];
                 byte EEPROM_AES_NONCE[12];
                 EEPROMRead((uint32_t *) EEPROM_AES_KEY, 0x0, 16);
                 EEPROMRead((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
 
+                // Decrypt ciphertext with AES-GCM
                 Aes dec;
                 int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
                 int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
-                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); 
+                int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); //Use the current block of plaintext
                 wc_AesFree(&dec);
 
+                // Erase data from EEPROM_AES_KEY
                 for(j = 0; j < 16; j++) {
                     EEPROM_AES_KEY[j] = 0;
-                }
+                } // for
 
                 // Increment nonce
                 for(j = 0; j < 12; j++) {
                     if(++EEPROM_AES_NONCE[j]!=0) {
                         break;
                     }
-                }
+                } // for
 
+                // Reprogram incremented AES nonce in EEPROM and erase data from AES nonce
                 EEPROMProgram((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
                 for(j = 0; j < 12; j++) {
                     EEPROM_AES_NONCE[j] = 0;
-                }
+                } // for
 
-                // break if not decrypt properly
+                // Exit if ciphertext failed to decrypt properly at any point
                 if(res1!=0 || res2!=0 || res3!=0) {
                     delay_ms(4900);
                     uart_write(UART0, ERROR); // Reject the metadata.
@@ -349,13 +374,14 @@ void load_firmware(void) {
                     return;
                 }
 
+                // Update Sha256 hash with current block of plaintext
                 if (wc_Sha256Update(&sha, pt+i*256, 256) != 0) {
                     delay_ms(4900);
                     uart_write(UART0, ERROR);
                     SysCtlReset();      
                     return;
                 }
-            }
+            } // for
 
              
             // Try to write flash and check for error
@@ -366,7 +392,7 @@ void load_firmware(void) {
                 return;
             }
 
-            // set firmware permissions in flash
+            // Set firmware permissions in flash
             if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
                 if(FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly)!=0) {
                     delay_ms(4900);
@@ -384,7 +410,7 @@ void load_firmware(void) {
         uart_write(UART0, OK); // Acknowledge the frame.
     } // while(1)
             
-    // Finalize Sha256 Final
+    // Finalize Sha256 hash
     if (wc_Sha256Final(&sha, hash) != 0) {
         delay_ms(4900);
         uart_write(UART0, ERROR);
@@ -428,22 +454,23 @@ void load_firmware(void) {
         SysCtlReset();            // Reset device
         return;
     }
-    
+
+    // Re-initialize page_addr to FW_TMP for firmware transfer
     page_addr = FW_TMP;
     for(i = 0; i < frame_ctr; i++) {
-        // Try to write flash and check for error
-        if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
+        // Try to transfer flash firmware from FW_TMP to FW_BASE and check for error
+        if (program_flash((uint8_t *) real_page_addr, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
             return;
         }
 
-        // set firmware permissions in flash
+        // Set firmware permissions in flash
         if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
             if(FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
                 SysCtlReset();
                 return;
             }
-            if(FlashProtectSet(page_addr2-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
+            if(FlashProtectSet(real_page_addr-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
                 SysCtlReset();
                 return;
             }
@@ -451,8 +478,8 @@ void load_firmware(void) {
 
         // Update to next page
         page_addr += FLASH_PAGESIZE;
-        page_addr2 += FLASH_PAGESIZE;
-    }
+        real_page_addr += FLASH_PAGESIZE;
+    } // for
 
     return;
 }
