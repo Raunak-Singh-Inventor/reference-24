@@ -62,7 +62,7 @@ def send_metadata(ser, metadata, debug=False):
         raise RuntimeError("ERROR: Bootloader responded with {}".format(repr(resp)))
 
 
-def send_frame(ser, frame, idx, debug=False):
+def send_frame(ser, frame, debug=False):
     ser.write(frame)  # Write the frame...
 
     if debug:
@@ -100,7 +100,7 @@ def update(ser, infile, debug):
 
         # Construct frame.
         frame = p16(len(data), endian='big') + data
-        send_frame(ser, frame, debug=debug, idx=idx)
+        send_frame(ser, frame, debug=debug)
         print(f"Wrote frame {idx} ({len(frame)} bytes)")
    
     print("Done writing firmware.")
