@@ -168,22 +168,9 @@ show whether the RSA signature and hash were verified successfully or not. This 
 Additional firmwares can be updated by repeating steps 3 and 4, but only firmware versions higher than the one flashed to the board (or version 0) will be accepted.
 
 # Interacting with the Bootloader
-
-Using the custom `car-serial` script:
-```
-car-serial
-```
-
-Using `pyserial` module:
-
-```
-python -m serial.tools.miniterm /dev/ttyACM0 115200
-```
-
-You can now interact with the bootloader and firmware! Type 'B' to boot.
-
-Exit miniterm: `Ctrl-]`
-Exit picocom: `Ctrl-A X`
+(ONLY FOR OFFICIAL DEVELOPERS)
+For convenience, use the `debug.sh` shell script in the `tools` directory
+for debugging purposes, which will launch either `picocom` or `gdb-multiarch`.
 
 ©2024 TEAM SUPER AUTO PETS. ALL RIGHTS RESERVED. <br> 
 APPROVED FOR PUBLIC RELEASE. DISTRIBUTION UNLIMITED 24-01337-1
