@@ -192,6 +192,14 @@ void load_firmware(void) {
     signature_size = (int) rcv << 8;
     rcv = uart_read(UART0, BLOCKING, &read);
     signature_size += (int) rcv;
+
+    if(signature_size!=256+16) {
+        delay_ms(4900);
+        uart_write(UART0, OK); // Reject the metadata.
+        SysCtlReset();            // Reset device
+        return 0;
+    }
+
     unsigned char signature_frame[signature_size];
     for (int i = 0; i < signature_size; ++i) {
         signature_frame[i] = uart_read(UART0, BLOCKING, &read);
@@ -226,7 +234,9 @@ void load_firmware(void) {
 
     // Increment nonce
     for(int i = 0; i < 12; i++) {
-        EEPROM_AES_NONCE[i]++;
+        if(++EEPROM_AES_NONCE[i]!=0) {
+            break;
+        }
     }
 
     EEPROMProgram((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
@@ -315,20 +325,20 @@ void load_firmware(void) {
                 int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); 
                 wc_AesFree(&dec);
 
-                for(int i = 0; i < 16; i++) {
-                    EEPROM_AES_KEY[i] = 0;
+                for(j = 0; j < 16; j++) {
+                    EEPROM_AES_KEY[j] = 0;
                 }
 
                 // Increment nonce
-                for(int i = 0; i < 12; i++) {
-                    if(++EEPROM_AES_NONCE[i]!=0) {
+                for(j = 0; j < 12; j++) {
+                    if(++EEPROM_AES_NONCE[j]!=0) {
                         break;
                     }
                 }
 
                 EEPROMProgram((uint32_t *) EEPROM_AES_NONCE, 0x0 + 16, 12);
-                for(int i = 0; i < 12; i++) {
-                    EEPROM_AES_NONCE[i] = 0;
+                for(j = 0; j < 12; j++) {
+                    EEPROM_AES_NONCE[j] = 0;
                 }
 
                 // break if not decrypt properly
