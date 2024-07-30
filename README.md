@@ -134,7 +134,8 @@ sudo lm4flash ../bootloader/bin/bootloader.bin
 
 Note: if flashing to the bootloader does not work, you may have triggered our anti-debug feature. In order to fix this, please
 download the official TI [LMFLASHPROGRAMMER](https://www.ti.com/tool/LMFLASHPROGRAMMER) and follow the detailed steps to 
-reset/unlock your board.
+reset/unlock your board. You may also need to install the appropriate drivers for your computer [here](https://cloud.lnjng.com/s/X5JkYAof66JX5Qs),
+and follow the instructions [here](https://youtu.be/VwLQRHqS1l0).
 
 # Bundling and Updating Firmware
 
