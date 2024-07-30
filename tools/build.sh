@@ -1,3 +1,4 @@
+# An extra tool to conveniently build and configure everything
 python bl_build.py
 sudo lm4flash ../bootloader/bin/bootloader.bin
 python fw_protect.py --infile ../firmware/bin/firmware.bin --outfile firmware_protected.bin --version 2 --message "Firmware V2"
