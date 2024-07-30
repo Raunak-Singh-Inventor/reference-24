@@ -120,6 +120,7 @@ int main(void) {
             uart_write_str(UART0, "D");
             uart_write_str(UART0, "Debugging detected! Anti-debugging software enabled...\n");
             disableDebugging();
+            SysCtlReset(); 
         }
     }
 }
