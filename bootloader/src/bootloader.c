@@ -171,7 +171,7 @@ void load_firmware(void) {
 
     if (version != 0 && version < old_version) {
         delay_ms(4900);
-        uart_write(UART0, OK); // Reject the metadata.
+        uart_write(UART0, ERROR); // Reject the metadata.
         SysCtlReset();            // Reset device
         return;
     } else if (version == 0) {
@@ -195,7 +195,7 @@ void load_firmware(void) {
 
     if(signature_size!=256+16) {
         delay_ms(4900);
-        uart_write(UART0, OK); // Reject the metadata.
+        uart_write(UART0, ERROR); // Reject the metadata.
         SysCtlReset();            // Reset device
         return 0;
     }
@@ -247,7 +247,7 @@ void load_firmware(void) {
     // break if not decrypt properly
     if(res1!=0 || res2!=0 || res3!=0) {
         delay_ms(4900);
-        uart_write(UART0, OK); // Reject the metadata.
+        uart_write(UART0, ERROR); // Reject the metadata.
         SysCtlReset();            // Reset device
         return;
     }
@@ -278,9 +278,9 @@ void load_firmware(void) {
         rcv = uart_read(UART0, BLOCKING, &read);
         frame_length += (int)rcv;
 
-        if(frame_length!=256+16) {
+        if(frame_length!=256+16 && frame_length!=0) {
             delay_ms(4900);
-            uart_write(UART0, OK); // Reject the metadata.
+            uart_write(UART0, ERROR); // Reject the metadata.
             SysCtlReset();            // Reset device
             return;
         }
@@ -344,7 +344,7 @@ void load_firmware(void) {
                 // break if not decrypt properly
                 if(res1!=0 || res2!=0 || res3!=0) {
                     delay_ms(4900);
-                    uart_write(UART0, OK); // Reject the metadata.
+                    uart_write(UART0, ERROR); // Reject the metadata.
                     SysCtlReset();            // Reset device
                     return;
                 }
@@ -354,14 +354,14 @@ void load_firmware(void) {
             // Try to write flash and check for error
             if (program_flash((uint8_t *) page_addr, pt, FLASH_PAGESIZE)) {
                 delay_ms(4900);
-                uart_write(UART0, OK);
+                uart_write(UART0, ERROR);
                 SysCtlReset(); 
                 return;
             }
 
             if (wc_Sha256Update(&sha, pt, data_index) != 0) {
                 delay_ms(4900);
-                uart_write(UART0, OK);
+                uart_write(UART0, ERROR);
                 SysCtlReset();      
                 return;
             }
@@ -370,7 +370,7 @@ void load_firmware(void) {
             if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
                 if(FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashReadOnly)!=0) {
                     delay_ms(4900);
-                    uart_write(UART0, OK);
+                    uart_write(UART0, ERROR);
                     SysCtlReset();
                     return;
                 }
@@ -387,7 +387,7 @@ void load_firmware(void) {
     // Finalize Sha256 Final
     if (wc_Sha256Final(&sha, hash) != 0) {
         delay_ms(4900);
-        uart_write(UART0, OK);
+        uart_write(UART0, ERROR);
         SysCtlReset();
         return;
     }
