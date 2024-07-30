@@ -20,6 +20,9 @@ REPO_ROOT = pathlib.Path(__file__).parent.parent.absolute()
 BOOTLOADER_DIR = os.path.join(REPO_ROOT, "bootloader")
 RSA_LENGTH = 2048
 
+def arrayize(binary_string):
+    return '{' + ','.join([hex(char) for char in binary_string]) + '}'
+    
 def write_bytearr_to_secrets(variable_name, variable, secrets, isConst):
     if variable_name != "AES_KEY" and variable_name != "AES_NONCE" and variable_name != "publicKey":
         return
@@ -75,7 +78,8 @@ def make_bootloader() -> bool:
     secrets.write("#define SECRETS_H\n")
     write_bytearr_to_secrets("AES_KEY", key, secrets=secrets, isConst=False)
     write_bytearr_to_secrets("AES_NONCE", nonce, secrets=secrets, isConst=False)
-    write_bytearr_to_secrets("publicKey", pubKey, secrets=secrets, isConst=False)
+    # write_bytearr_to_secrets("publicKey", pubKey, secrets=secrets, isConst=False)
+    secrets.write("const uint8_t publicKey[" + str(RSA_LENGTH) + "] = " + arrayize(pubKey) + ";\n")
     secrets.write("#endif")
     secrets.close()
     
