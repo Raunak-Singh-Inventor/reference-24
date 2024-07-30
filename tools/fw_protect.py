@@ -19,10 +19,11 @@ from Crypto.PublicKey import RSA
 def protect_firmware(infile, outfile, version, message):
 
     # Load secrets to import passwords, key, and nonce
-    with open('secret_build_output.txt', 'r') as build_output:
-        pwd = bytes.fromhex(build_output.readline())[:16]
-        key = bytes.fromhex(build_output.readline())[:16]
-        nonce = bytes.fromhex(build_output.readline())[:12]
+    build_output = open('secret_build_output.txt', 'r')
+    pwd = bytes.fromhex(build_output.readline())[:16]
+    key = bytes.fromhex(build_output.readline())[:16]
+    nonce = bytes.fromhex(build_output.readline())[:12]
+    build_output.close()
 
     # Load private key
     with open("privatekey.pem", "rb") as f:
@@ -39,9 +40,6 @@ def protect_firmware(infile, outfile, version, message):
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
-    # Pack version and size
-    metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
-
     # Initialize the firmware blob
     firmware_blob = metadata
 
@@ -50,16 +48,11 @@ def protect_firmware(infile, outfile, version, message):
     signer = pss.new(priv_key)
     signature = signer.sign(h)
 
-    cipher = AES.new(key, AES.MODE_GCM, nonce=nonce)
-    cipher.update(metadata)
-    ciphertext, tag = cipher.encrypt_and_digest(signature)
-    nonce = int.to_bytes(int.from_bytes(nonce, byteorder="little") + 1, byteorder="little", length=12)
-    firmware_blob += tag + ciphertext
-        
+    # add signature to star tof firmware and messagt
+    firmware_and_message = signature + firmware_and_message
 
     # Pad firmware and message
     firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
-
 
     # Encrypt firmware and message
     i = 0
@@ -71,12 +64,8 @@ def protect_firmware(infile, outfile, version, message):
         firmware_blob += tag + ciphertext
         i += 256
 
-
     # Delete privatekey.pem
     os.remove("privatekey.pem")
-    
-    # Add together firmware and message along with signature to make the firmware blob
-    firmware_blob = metadata + signature + firmware_and_message
 
     # Write firmware blob along with signature to outfile
     with open(outfile, "wb+") as outfile:
