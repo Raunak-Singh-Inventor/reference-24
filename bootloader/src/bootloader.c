@@ -231,8 +231,36 @@ void load_firmware(void) {
     // Decrypt signature ciphertext with AES-GCM
     Aes dec;
     int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
+
+    // Exit if AES did not initialize properly
+    if(res1!=0) {
+        delay_ms(4900);
+        uart_write(UART0, ERROR); // Reject the metadata.
+        SysCtlReset();            // Reset device
+        return;
+    }
+
     int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
+
+    // Exit if key failed to be set properly
+    if(res2!=0) {
+        delay_ms(4900);
+        uart_write(UART0, ERROR); // Reject the metadata.
+        SysCtlReset();            // Reset device
+        return;
+    }
+
     int res3 = wc_AesGcmDecrypt(&dec, signature, signature_ct, 256, EEPROM_AES_NONCE, 12, signature_tag, 16, aad, 4); 
+
+    // Exit if signature failed to decrypt properly
+    if(res3!=0) {
+        delay_ms(4900);
+        uart_write(UART0, ERROR); // Reject the metadata.
+        SysCtlReset();            // Reset device
+        return;
+    }
+
+    //Free AES object
     wc_AesFree(&dec);
 
     // Erase data from EEPROM_AES_Key
@@ -252,14 +280,6 @@ void load_firmware(void) {
     for(int i = 0; i < 12; i++) {
         EEPROM_AES_NONCE[i] = 0;
     } // for
-
-    // Exit if signature failed to decrypt properly at any point
-    if(res1!=0 || res2!=0 || res3!=0) {
-        delay_ms(4900);
-        uart_write(UART0, ERROR); // Reject the metadata.
-        SysCtlReset();            // Reset device
-        return;
-    }
     
     uart_write(UART0, OK); // Acknowledge the signature.
     
@@ -344,8 +364,36 @@ void load_firmware(void) {
                 // Decrypt ciphertext with AES-GCM
                 Aes dec;
                 int res1 = wc_AesInit(&dec, NULL, INVALID_DEVID);
+
+                // Exit if AES did not initialize properly
+                if(res1!=0) {
+                    delay_ms(4900);
+                    uart_write(UART0, ERROR); // Reject the metadata.
+                    SysCtlReset();            // Reset device
+                    return;
+                }
+
                 int res2 = wc_AesGcmSetKey(&dec, EEPROM_AES_KEY, 16);
+
+                // Exit if key failed to be set properly
+                if(res2!=0) {
+                    delay_ms(4900);
+                    uart_write(UART0, ERROR); // Reject the metadata.
+                    SysCtlReset();            // Reset device
+                    return;
+                }
+                
                 int res3 = wc_AesGcmDecrypt(&dec, pt+(i*256), ct, 256, EEPROM_AES_NONCE, 12, tag, 16, aad, 4); //Use the current block of plaintext
+
+                // Exit if ciphertext failed to decrypt properly
+                if(res3!=0) {
+                    delay_ms(4900);
+                    uart_write(UART0, ERROR); // Reject the metadata.
+                    SysCtlReset();            // Reset device
+                    return;
+                }
+
+                //Free AES object
                 wc_AesFree(&dec);
 
                 // Erase data from EEPROM_AES_KEY
@@ -365,14 +413,6 @@ void load_firmware(void) {
                 for(j = 0; j < 12; j++) {
                     EEPROM_AES_NONCE[j] = 0;
                 } // for
-
-                // Exit if ciphertext failed to decrypt properly at any point
-                if(res1!=0 || res2!=0 || res3!=0) {
-                    delay_ms(4900);
-                    uart_write(UART0, ERROR); // Reject the metadata.
-                    SysCtlReset();            // Reset device
-                    return;
-                }
 
                 // Update Sha256 hash with current block of plaintext
                 if (wc_Sha256Update(&sha, pt+i*256, 256) != 0) {
