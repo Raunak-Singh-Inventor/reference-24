@@ -37,22 +37,20 @@ def protect_firmware(infile, outfile, version, message):
     # Pack version and size into two little-endian shorts
     metadata = p16(version, endian='little') + p16(len(firmware), endian='little')
 
+    # Initialize the firmware blob
+    firmware_blob = metadata
+
     # Append null-terminated message to end of firmware
     firmware_and_message = firmware + message.encode() + b"\00"
 
-    # Initialize the firmware blob
-    firmware_blob = metadata
+    # Pad firmware and message
+    firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024)) + b"\00" * (768)
 
     h = SHA256.new()
     h.update(firmware_and_message)
     signer = pss.new(priv_key)
     signature = signer.sign(h)
-
-    # add signature to star tof firmware and messagt
     firmware_and_message = signature + firmware_and_message
-
-    # Pad firmware and message
-    firmware_and_message += b"\00" * (1024 - (len(firmware_and_message) % 1024))
 
     # Encrypt firmware and message
     i = 0
