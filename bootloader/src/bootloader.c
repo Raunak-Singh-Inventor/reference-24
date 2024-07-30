@@ -71,7 +71,7 @@ void disableDebugging(void){
 }
 
 int main(void) {
-    // disableDebugging();
+    disableDebugging();
 
     SysCtlPeripheralEnable(SYSCTL_PERIPH_EEPROM0); // enable EEPROM module
 
@@ -348,6 +348,13 @@ void load_firmware(void) {
                     SysCtlReset();            // Reset device
                     return;
                 }
+
+                if (wc_Sha256Update(&sha, pt+i*256, 256) != 0) {
+                    delay_ms(4900);
+                    uart_write(UART0, ERROR);
+                    SysCtlReset();      
+                    return;
+                }
             }
 
              
@@ -356,13 +363,6 @@ void load_firmware(void) {
                 delay_ms(4900);
                 uart_write(UART0, ERROR);
                 SysCtlReset(); 
-                return;
-            }
-
-            if (wc_Sha256Update(&sha, pt, data_index) != 0) {
-                delay_ms(4900);
-                uart_write(UART0, ERROR);
-                SysCtlReset();      
                 return;
             }
 
