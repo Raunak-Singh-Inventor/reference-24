@@ -249,7 +249,7 @@ void load_firmware(void) {
         delay_ms(4900);
         uart_write(UART0, OK); // Reject the metadata.
         SysCtlReset();            // Reset device
-        return 0;
+        return;
     }
     
     uart_write(UART0, OK); // Acknowledge the signature.
@@ -282,7 +282,7 @@ void load_firmware(void) {
             delay_ms(4900);
             uart_write(UART0, OK); // Reject the metadata.
             SysCtlReset();            // Reset device
-            return 0;
+            return;
         }
 
         total_frame_amt += frame_length;
@@ -346,7 +346,7 @@ void load_firmware(void) {
                     delay_ms(4900);
                     uart_write(UART0, OK); // Reject the metadata.
                     SysCtlReset();            // Reset device
-                    return 0;
+                    return;
                 }
             }
 
@@ -356,14 +356,14 @@ void load_firmware(void) {
                 delay_ms(4900);
                 uart_write(UART0, OK);
                 SysCtlReset(); 
-                return 0;
+                return;
             }
 
             if (wc_Sha256Update(&sha, pt, data_index) != 0) {
                 delay_ms(4900);
                 uart_write(UART0, OK);
                 SysCtlReset();      
-                return 0;
+                return;
             }
 
             // set firmware permissions in flash
@@ -372,7 +372,7 @@ void load_firmware(void) {
                     delay_ms(4900);
                     uart_write(UART0, OK);
                     SysCtlReset();
-                    return 0;
+                    return;
                 }
             }
 
@@ -432,18 +432,18 @@ void load_firmware(void) {
         // Try to write flash and check for error
         if (program_flash((uint8_t *) page_addr2, (uint8_t *) page_addr, FLASH_PAGESIZE)) {
             SysCtlReset();            // Reset device
-            return 0;
+            return;
         }
 
         // set firmware permissions in flash
         if((page_addr+FLASH_PAGESIZE-FW_BASE)%(2*FLASH_PAGESIZE)==0) {
             if(FlashProtectSet(page_addr-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
                 SysCtlReset();
-                return 0;
+                return;
             }
             if(FlashProtectSet(page_addr2-FLASH_PAGESIZE, FlashExecuteOnly) != 0) {
                 SysCtlReset();
-                return 0;
+                return;
             }
         }
 
