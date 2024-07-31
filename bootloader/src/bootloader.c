@@ -169,11 +169,7 @@ void load_firmware(void) {
     aad[3] = (uint32_t)rcv;
 
     // Compare to old version and abort if older (note special case for version 0).
-    // If no metadata available (0xFFFF), accept version 1
     uint16_t old_version = *fw_version_address;
-    if (old_version == 0xFFFF) {
-        old_version = 1;
-    }
 
     if (version != 0 && version < old_version) {
         delay_ms(4900);
